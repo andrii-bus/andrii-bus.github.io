@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#0e0e10">
-<meta name="app-version" content="bus-v12">
+<meta name="app-version" content="bus-v13">
 <title>Куда едем?</title>
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="icon-192.png" type="image/png">
@@ -358,7 +358,7 @@ const dirs = () => [
 const keyOf = d => d.from + ">" + d.to;
 
 function renderSeg() {
-  $("seg").innerHTML = `<span class="lbl">Работа</span>` + WORKS.map(w =>
+  $("seg").innerHTML = WORKS.map(w =>
     `<button type="button" data-w="${w}" class="${w === work ? "on" : ""}">${STOPS[w].name}</button>`).join("");
 }
 
