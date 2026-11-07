@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#0e0e10">
-<meta name="app-version" content="bus-v13">
+<meta name="app-version" content="bus-v14">
 <title>Куда едем?</title>
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="icon-192.png" type="image/png">
@@ -18,10 +18,10 @@
     --peri:#b9c7f5; --peri-ink:#15161c; --peri-soft:#cfd9fa;
     --dark:#232327; --dark2:#2e2e33;
     --late:#e5484d; --late-on-peri:#c2272d; --ok:#2fbf71; --ok-on-peri:#11804a; --warn:#f2b84b;
-    --gap:clamp(8px, 1.4vh, 14px);
+    --gap:calc(clamp(8px, 1.4vh, 14px) * var(--k, 1));
   }
   * { box-sizing:border-box; }
-  html, body { height:100%; }
+  html, body { height:100%; overflow:hidden; overscroll-behavior:none; }   /* главный экран никогда не прокручивается */
   body { margin:0; background:var(--bg); color:var(--text);
          font-family:Rubik, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; -webkit-tap-highlight-color:transparent; }
   button { font:inherit; color:inherit; cursor:pointer; }
@@ -45,7 +45,7 @@
 
   /* ===== карточки делят оставшуюся высоту поровну ===== */
   .cards { flex:1; min-height:0; display:flex; flex-direction:column; gap:var(--gap); }
-  .card { flex:1; min-height:0; border-radius:22px; padding:clamp(12px, 1.9vh, 20px) 16px;
+  .card { flex:1; min-height:0; overflow:hidden; border-radius:22px; padding:calc(clamp(12px, 1.9vh, 20px) * var(--k, 1)) 16px;
           display:flex; flex-direction:column; justify-content:space-between; gap:6px;
           background:var(--peri); color:var(--peri-ink); border:1.5px solid transparent; }
   .card.back { background:#26252a; color:var(--text); border-color:#3d3742; }
@@ -59,8 +59,8 @@
   .circle svg { width:18px; height:18px; fill:none; stroke:currentColor; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; }
 
   .big { font-family:Rubik, system-ui, sans-serif; font-weight:700; letter-spacing:-.5px; line-height:1.05; white-space:nowrap;
-         font-size:clamp(30px, min(12.2vw, 7vh), 64px); }
-  .meta { display:flex; align-items:center; gap:7px; font-size:clamp(15px, min(4.6vw, 2.5vh), 21px); flex-wrap:wrap; }
+         font-size:calc(clamp(30px, min(12.2vw, 7vh), 64px) * var(--k, 1)); }
+  .meta { display:flex; align-items:center; gap:7px; font-size:calc(clamp(15px, min(4.6vw, 2.5vh), 21px) * var(--k, 1)); flex-wrap:wrap; row-gap:2px; }
   .meta svg { width:1em; height:1em; fill:none; stroke:currentColor; stroke-width:1.8; flex:none; }
   .meta .sep { opacity:.45; }
   .late { color:var(--late); } .ontime { color:var(--ok); } .early { color:var(--warn); } .muted { opacity:.6; }
@@ -69,13 +69,13 @@
 
   .row3 { display:flex; align-items:center; justify-content:space-between; gap:8px; }
   .lines { display:flex; gap:8px; }
-  .ln-av { --s:clamp(36px, 5.6vh, 48px); min-width:var(--s); height:var(--s); padding:0 8px; border-radius:999px; display:grid; place-items:center;
-           font-family:Rubik, sans-serif; font-weight:600; font-size:clamp(15px, 2.3vh, 19px); background:#fff; color:#111; }
+  .ln-av { --s:calc(clamp(36px, 5.6vh, 48px) * var(--k, 1)); min-width:var(--s); height:var(--s); padding:0 8px; border-radius:999px; display:grid; place-items:center;
+           font-family:Rubik, sans-serif; font-weight:600; font-size:calc(clamp(15px, 2.3vh, 19px) * var(--k, 1)); background:#fff; color:#111; }
   .card.back .ln-av { background:#141416; color:#fff; }
-  .stats { display:flex; align-items:center; gap:10px; font-size:clamp(14px, 2.2vh, 18px); white-space:nowrap; }
+  .stats { display:flex; align-items:center; gap:10px; font-size:calc(clamp(14px, 2.2vh, 18px) * var(--k, 1)); white-space:nowrap; }
   .stats span { display:inline-flex; align-items:center; gap:5px; }
   .stats svg { width:1.15em; height:1.15em; fill:none; stroke:currentColor; stroke-width:1.8; }
-  .stats .trk { background:#111; color:#fff; border-radius:12px; padding:clamp(5px, .9vh, 9px) 11px; font-family:Rubik, sans-serif; font-weight:600; }
+  .stats .trk { background:#111; color:#fff; border-radius:12px; padding:calc(clamp(5px, .9vh, 9px) * var(--k, 1)) 11px; font-family:Rubik, sans-serif; font-weight:600; }
   .card.back .stats .trk { background:#e4e7f6; color:#111; }
 
   /* ===== нижняя панель ===== */
@@ -457,7 +457,33 @@ function render() {
   $("fab").classList.toggle("busy", Object.keys(inflight).length > 0);
   $("fab").classList.toggle("offline", !!lastError);
   renderSheet();
+  fit();
 }
+
+// Подгонка под экран: если что-то не влезает (длинный статус ушёл на 2 строки, маленький экран и т.п.),
+// шаг за шагом уменьшаем размеры карточек, пока всё не поместится. Так прокрутка не появится ни при каком тексте.
+function viewH() {
+  // реальная видимая высота (на Android в установленном приложении 100vh бывает больше видимой части)
+  const v = [innerHeight, document.documentElement.clientHeight, window.visualViewport && visualViewport.height].filter(x => x > 0);
+  return Math.floor(Math.min(...v));
+}
+function fit() {
+  const root = document.documentElement, main = document.querySelector("main");
+  const vh = viewH();
+  main.style.height = vh + "px";
+  const over = () => main.scrollHeight > main.clientHeight + 1 || main.getBoundingClientRect().bottom > vh + 1 ||
+    [...document.querySelectorAll(".card")].some(c => c.scrollHeight > c.clientHeight + 1) ||
+    [...document.querySelectorAll(".big, .row3, .row1")].some(e => e.scrollWidth > e.clientWidth + 1);
+  let k = 1;
+  root.style.setProperty("--k", k);
+  while (over() && k > 0.5) { k = Math.round((k - 0.03) * 100) / 100; root.style.setProperty("--k", k); }
+}
+let fitTimer;
+const refit = () => { clearTimeout(fitTimer); fitTimer = setTimeout(fit, 80); };
+addEventListener("resize", refit);
+addEventListener("orientationchange", refit);
+if (window.visualViewport) visualViewport.addEventListener("resize", refit);
+if (document.fonts && document.fonts.ready) document.fonts.ready.then(fit);
 
 function setBanner(text) { notice = text || ""; }
 

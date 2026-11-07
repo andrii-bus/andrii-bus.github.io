@@ -24,7 +24,7 @@ jobs:
       - name: Wait for the deployed page
         run: |
           for i in $(seq 1 40); do
-            if curl -sS "https://andrii-bus.github.io/?t=$(date +%s)" | grep -q 'bus-v13'; then echo "live"; exit 0; fi
+            if curl -sS "https://andrii-bus.github.io/?t=$(date +%s)" | grep -q 'bus-v14'; then echo "live"; exit 0; fi
             sleep 15
           done
           echo "page not live"; exit 1
@@ -56,6 +56,13 @@ jobs:
             }
             await p.screenshot({ path: `shot-${w}.png` });
           }
+          // Pixel 7 screen; also simulate Android reporting 100dvh taller than the visible area
+          await p.setViewportSize({ width: 411, height: 914 });
+          await p.addStyleTag({ content: 'main{height:calc(100dvh + 60px)}' });
+          await p.evaluate(() => fit()); await p.waitForTimeout(500);
+          console.log('pixel7 + tall-vh bug:', JSON.stringify(await p.evaluate(() => ({ inner: innerHeight, scroll: document.scrollingElement.scrollHeight,
+            main: Math.round(document.querySelector('main').getBoundingClientRect().height), refreshBottom: Math.round(document.getElementById('fab').getBoundingClientRect().bottom),
+            k: getComputedStyle(document.documentElement).getPropertyValue('--k') }))));
           await b.close();
           JS
           node check.mjs
