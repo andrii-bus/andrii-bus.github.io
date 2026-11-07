@@ -4,14 +4,14 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#0e0e10">
-<meta name="app-version" content="bus-v10">
+<meta name="app-version" content="bus-v11">
 <title>Куда едем?</title>
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="icon-192.png" type="image/png">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Onest:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
   :root {
     --bg:#0e0e10; --text:#f4f4f6; --muted:#8d8d96; --line:#2a2a2f;
@@ -23,7 +23,7 @@
   * { box-sizing:border-box; }
   html, body { height:100%; }
   body { margin:0; background:var(--bg); color:var(--text);
-         font-family:Onest, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; -webkit-tap-highlight-color:transparent; }
+         font-family:Rubik, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; -webkit-tap-highlight-color:transparent; }
   button { font:inherit; color:inherit; cursor:pointer; }
 
   /* весь главный экран = ровно высота окна, без прокрутки */
@@ -31,51 +31,52 @@
          padding:calc(env(safe-area-inset-top) + clamp(10px, 2vh, 22px)) 18px calc(env(safe-area-inset-bottom) + 8px); }
 
   /* ===== шапка ===== */
-  .top { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; flex:none; }
+  .top { display:flex; align-items:center; gap:10px; flex:none; }
   h1 { margin:0; font-weight:400; letter-spacing:-.6px; line-height:1.05; font-size:clamp(30px, min(10vw, 5.4vh), 46px); }
-  .avatar { width:44px; height:44px; border-radius:50%; flex:none; border:2px solid #fff; overflow:hidden; background:#000; }
+  .avatar { width:52px; height:52px; border-radius:50%; flex:none; border:2px solid #3a3a40; overflow:hidden; background:#000; }
   .avatar img { width:100%; height:100%; display:block; object-fit:cover; }
 
   /* ===== выбор «работы» — как полоска дней ===== */
-  .work { display:flex; align-items:center; gap:6px; flex:none; }
-  .work .lbl { color:var(--muted); font-size:13px; margin-right:6px; }
-  .work button { flex:1; border:0; background:transparent; color:#d6d6dc; border-radius:14px;
-                 padding:clamp(8px, 1.3vh, 12px) 8px; font-size:15px; font-weight:500; }
+  .work { flex:1; min-width:0; display:flex; align-items:center; gap:4px; background:#26262b; border-radius:999px; padding:5px; }
+  .work .lbl { flex:.8; text-align:center; color:var(--muted); font-size:15px; font-weight:500; }
+  .work button { flex:1; border:0; background:transparent; color:#c9c9d0; border-radius:999px;
+                 padding:clamp(9px, 1.4vh, 12px) 6px; font-size:16px; font-weight:500; white-space:nowrap; }
   .work button.on { background:#fff; color:#111; font-weight:600; }
 
   /* ===== карточки делят оставшуюся высоту поровну ===== */
   .cards { flex:1; min-height:0; display:flex; flex-direction:column; gap:var(--gap); }
   .card { flex:1; min-height:0; border-radius:22px; padding:clamp(12px, 1.9vh, 20px) 16px;
           display:flex; flex-direction:column; justify-content:space-between; gap:6px;
-          background:var(--peri); color:var(--peri-ink); }
-  .card.back { background:var(--dark); color:var(--text); }
+          background:var(--peri); color:var(--peri-ink); border:1.5px solid transparent; }
+  .card.back { background:#26252a; color:var(--text); border-color:#3d3742; }
   .row1 { display:flex; align-items:center; gap:8px; }
-  .tag { background:#fff; color:#111; border-radius:999px; padding:5px 12px; font-size:13px; font-weight:500; white-space:nowrap; }
-  .card.back .tag { background:#3a3a40; color:#e6e6ea; }
-  .route-s { flex:1; min-width:0; font-size:13px; opacity:.7; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .tag { background:#111; color:#fff; border-radius:999px; padding:6px 13px; font-size:15px; font-weight:500; white-space:nowrap; }
+  .card.back .tag { background:#3d3d44; color:#e6e6ea; }
+  .route-s { flex:1; min-width:0; font-size:15px; color:#3346a8; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .card.back .route-s { color:#9d9da6; }
   .circle { width:34px; height:34px; border-radius:50%; border:0; background:#fff; color:#111; display:grid; place-items:center; flex:none; }
-  .card.back .circle { background:#3a3a40; color:#fff; }
+  .card.back .circle { background:#111; color:#fff; }
   .circle svg { width:18px; height:18px; fill:none; stroke:currentColor; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; }
 
-  .big { font-weight:400; letter-spacing:-1px; line-height:1.05; white-space:nowrap;
-         font-size:clamp(30px, min(10.5vw, 5.8vh), 52px); }
-  .big b { font-weight:600; }
-  .meta { display:flex; align-items:center; gap:6px; font-size:14px; flex-wrap:wrap; }
-  .meta svg { width:16px; height:16px; fill:none; stroke:currentColor; stroke-width:1.8; flex:none; }
+  .big { font-family:Rubik, system-ui, sans-serif; font-weight:700; letter-spacing:-.5px; line-height:1.05; white-space:nowrap;
+         font-size:clamp(30px, min(12.2vw, 7vh), 64px); }
+  .meta { display:flex; align-items:center; gap:7px; font-size:clamp(15px, min(4.6vw, 2.5vh), 21px); flex-wrap:wrap; }
+  .meta svg { width:1em; height:1em; fill:none; stroke:currentColor; stroke-width:1.8; flex:none; }
   .meta .sep { opacity:.45; }
   .late { color:var(--late); } .ontime { color:var(--ok); } .early { color:var(--warn); } .muted { opacity:.6; }
   .card:not(.back) .late { color:var(--late-on-peri); } .card:not(.back) .ontime { color:var(--ok-on-peri); }
   .card:not(.back) .early { color:#9a5b00; }
 
   .row3 { display:flex; align-items:center; justify-content:space-between; gap:8px; }
-  .lines { display:flex; }
-  .ln-av { min-width:34px; height:34px; padding:0 8px; border-radius:999px; display:grid; place-items:center; font-weight:600; font-size:14px;
-           background:#fff; color:#111; border:2px solid var(--peri); margin-left:-8px; }
-  .ln-av:first-child { margin-left:0; }
-  .card.back .ln-av { background:#3a3a40; color:#fff; border-color:var(--dark); }
-  .stats { display:flex; align-items:center; gap:12px; font-size:13.5px; white-space:nowrap; }
-  .stats span { display:inline-flex; align-items:center; gap:4px; }
-  .stats svg { width:16px; height:16px; fill:none; stroke:currentColor; stroke-width:1.8; }
+  .lines { display:flex; gap:8px; }
+  .ln-av { --s:clamp(36px, 5.6vh, 48px); min-width:var(--s); height:var(--s); padding:0 8px; border-radius:999px; display:grid; place-items:center;
+           font-family:Rubik, sans-serif; font-weight:600; font-size:clamp(15px, 2.3vh, 19px); background:#fff; color:#111; }
+  .card.back .ln-av { background:#141416; color:#fff; }
+  .stats { display:flex; align-items:center; gap:10px; font-size:clamp(14px, 2.2vh, 18px); white-space:nowrap; }
+  .stats span { display:inline-flex; align-items:center; gap:5px; }
+  .stats svg { width:1.15em; height:1.15em; fill:none; stroke:currentColor; stroke-width:1.8; }
+  .stats .trk { background:#111; color:#fff; border-radius:12px; padding:clamp(5px, .9vh, 9px) 11px; font-family:Rubik, sans-serif; font-weight:600; }
+  .card.back .stats .trk { background:#e4e7f6; color:#111; }
 
   /* ===== нижняя панель ===== */
   .bar { flex:none; display:flex; align-items:center; justify-content:space-between; gap:12px; padding:0 4px; }
@@ -89,7 +90,7 @@
   @keyframes spin { to { transform:rotate(360deg); } }
 
   /* низкие экраны */
-  @media (max-height: 640px) { .route-s { display:none; } .lines { display:none; } }
+  @media (max-height: 600px) { .route-s { display:none; } }
 
   /* ===== панель «Все рейсы» — как экран задачи ===== */
   .sheet { position:fixed; inset:0; z-index:10; background:rgba(0,0,0,.55); display:flex; flex-direction:column; justify-content:flex-end; }
@@ -101,7 +102,7 @@
   .sheet-top .nav { display:flex; justify-content:space-between; margin-bottom:10px; }
   .sheet-top .nav button { border:0; background:transparent; width:36px; height:36px; display:grid; place-items:center; }
   .sheet-top .nav svg { width:22px; height:22px; fill:none; stroke:currentColor; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; }
-  .sheet-top h3 { margin:0; font-weight:400; font-size:28px; letter-spacing:-.5px; line-height:1.1; }
+  .sheet-top h3 { margin:0; font-family:Rubik, sans-serif; font-weight:600; font-size:28px; letter-spacing:-.5px; line-height:1.1; }
   .sheet-top .sub { font-size:13px; opacity:.7; margin-top:6px; }
   .sheet-body { background:#151517; color:var(--text); border-radius:26px 26px 0 0; padding:16px 16px calc(env(safe-area-inset-bottom) + 14px);
                 display:flex; flex-direction:column; min-height:0; }
@@ -112,7 +113,7 @@
   .sheet-panel.back .list li { background:var(--dark2); color:var(--text); }
   .list .ln { grid-row:span 2; min-width:38px; height:38px; padding:0 8px; border-radius:999px; display:grid; place-items:center;
               background:#fff; color:#111; font-weight:600; }
-  .list .t { font-size:19px; font-weight:600; }
+  .list .t { font-family:Rubik, sans-serif; font-size:19px; font-weight:600; }
   .list .in { font-size:16px; font-weight:600; text-align:right; }
   .list .sub { grid-column:2 / 4; font-size:12.5px; opacity:.8; }
   .sheet-panel:not(.back) .list .late { color:var(--late-on-peri); } .sheet-panel:not(.back) .list .ontime { color:var(--ok-on-peri); }
@@ -126,11 +127,9 @@
 <body>
 <main>
   <header class="top">
-    <h1>Куда едем<br>сегодня? 🚌</h1>
-    <div class="avatar"><img src="icon-192.png" alt=""></div>
+    <div class="avatar"><img src="avatar.png" alt=""></div>
+    <div class="work" id="seg"></div>
   </header>
-
-  <div class="work" id="seg"></div>
 
   <div class="cards" id="cards"></div>
 
@@ -399,14 +398,14 @@ function cardHtml(d) {
     big = "Нет рейсов"; meta = `<span class="muted">Прямых автобусов в ближайшие ${WINDOW_MIN} мин нет</span>`;
   } else {
     const m = minsTo(n0.dep, now), s = statusOf(n0);
-    big = m <= 0 ? "<b>Сейчас</b>" : `Через <b>${m} мин</b>`;
-    meta = `${ICON.clock}<b>${hm(n0.dep)}</b><span class="${s.cls}">${s.txt}</span>` +
+    big = m <= 0 ? "Сейчас" : `Через ${m} мин`;
+    meta = `${ICON.clock}<span>${hm(n0.dep)}</span><span class="${s.cls}">${s.txt}</span>` +
            (n1 ? `<span class="sep">·</span><span>далее ${hm(n1.dep)}</span>` : "");
     const lines = [...new Set(active.slice(0, 3).map(t => t.line))].slice(0, 3);
     const ride = Math.round((new Date(n0.arr) - new Date(n0.dep)) / 60000);
     const track = (n0.track || "").replace(/\s*\(.*\)\s*$/, "");
     row3 = `<div class="lines">${lines.map(l => `<span class="ln-av">${esc(l)}</span>`).join("")}</div>
-      <div class="stats"><span>${ICON.ride}${ride} мин</span>${track ? `<span>${ICON.pin}${esc(track)}</span>` : ""}</div>`;
+      <div class="stats"><span>${ICON.ride}${ride} мин</span>${track ? `<span class="trk">${esc(track)}</span>` : ""}</div>`;
   }
   return `<section class="card ${d.cls}" data-k="${k}">
     <div class="row1"><span class="tag">${d.label}</span><span class="route-s">${STOPS[d.from].name} → ${STOPS[d.to].name}</span>
