@@ -24,7 +24,7 @@ jobs:
       - name: Wait for the deployed page
         run: |
           for i in $(seq 1 40); do
-            if curl -sS "https://andrii-bus.github.io/?t=$(date +%s)" | grep -q 'bus-v22'; then echo "live"; exit 0; fi
+            if curl -sS "https://andrii-bus.github.io/?t=$(date +%s)" | grep -q 'bus-v23'; then echo "live"; exit 0; fi
             sleep 15
           done
           echo "page not live"; exit 1
@@ -47,6 +47,7 @@ jobs:
             await p.waitForFunction(() => /Обновлено/.test(document.getElementById('status').textContent) && !document.getElementById('fab').classList.contains('busy'), null, {timeout:60000}).catch(()=>console.log('TIMEOUT waiting for data'));
             console.log('\n##### Работа: ' + w);
             console.log('status:', await p.locator('#status').innerText());
+            console.log('route animation:', JSON.stringify(await p.evaluate(() => [...document.querySelectorAll('.anim svg')].map(s => ({ stops: s.querySelectorAll('.sd').length, bus: s.querySelector('.bus').getAttribute('transform') })))));
             console.log('fits one screen:', JSON.stringify(await p.evaluate(() => ({ inner: innerHeight, scroll: document.scrollingElement.scrollHeight }))));
             for (const c of await p.locator('.card').all()) console.log('-----\n' + (await c.innerText()));
             for (let i = 0; i < 2; i++) {
