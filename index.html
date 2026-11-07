@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#0e0e10">
-<meta name="app-version" content="bus-v11">
+<meta name="app-version" content="bus-v12">
 <title>Куда едем?</title>
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="icon-192.png" type="image/png">
@@ -408,7 +408,7 @@ function cardHtml(d) {
       <div class="stats"><span>${ICON.ride}${ride} мин</span>${track ? `<span class="trk">${esc(track)}</span>` : ""}</div>`;
   }
   return `<section class="card ${d.cls}" data-k="${k}">
-    <div class="row1"><span class="tag">${d.label}</span><span class="route-s">${STOPS[d.from].name} → ${STOPS[d.to].name}</span>
+    <div class="row1"><span class="tag">${STOPS[d.from].name} → ${STOPS[d.to].name}</span><span class="route-s"></span>
       <button class="circle more" type="button" data-k="${k}" aria-label="Все рейсы">${ICON.more}</button></div>
     <div class="big">${big}</div>
     <div class="meta">${meta}</div>
@@ -437,7 +437,7 @@ function renderSheet() {
   if (!d) { sh.hidden = true; return; }
   $("sheetPanel").className = "sheet-panel " + d.cls;
   $("sheetTitle").textContent = `${STOPS[d.from].full} → ${STOPS[d.to].full}`;
-  $("sheetSub").textContent = d.label;
+  $("sheetSub").textContent = "";
   const list = $("sheetList"), y = list.scrollTop;
   list.innerHTML = sheetRows(sheetKey);
   list.scrollTop = y;
