@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#0e0e10">
-<meta name="app-version" content="bus-v29">
+<meta name="app-version" content="bus-v30">
 <title>LA Bus</title>
 <link rel="manifest" href="manifest.json">
 <meta name="mobile-web-app-capable" content="yes">
@@ -529,7 +529,7 @@ function cardHtml(d) {
     <div class="row1"><span class="tag">${STOPS[d.from].name} → ${STOPS[d.to].name}</span><span class="route-s"></span>
       <button class="circle more" type="button" data-k="${k}" aria-label="Все рейсы">${ICON.more}</button></div>
     <div class="big">${big}</div>
-    ${n0Via != null ? routeSvg(n0Via, d.cls ? 3500 : 0) : ""}
+    ${n0Via != null ? routeSvg(n0Via, 0) : ""}
     <div class="meta">${meta}</div>
     ${row3 ? `<div class="row3">${row3}</div>` : ""}
   </section>`;
