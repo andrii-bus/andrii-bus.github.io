@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#0e0e10">
-<meta name="app-version" content="bus-v23">
+<meta name="app-version" content="bus-v24">
 <title>LA Bus</title>
 <link rel="manifest" href="manifest.json">
 <meta name="mobile-web-app-capable" content="yes">
@@ -79,20 +79,22 @@
   .big { font-family:Nunito, Rubik, system-ui, sans-serif; font-weight:800; letter-spacing:-.4px; line-height:1.05; white-space:nowrap;
          font-size:calc(clamp(30px, min(12.2vw, 7vh), 64px) * var(--k, 1)); }
   .big .w { font-weight:600; opacity:.78; }
-  /* схема линии: автобус проезжает остановки */
-  .anim { height:calc(clamp(26px, 5vh, 46px) * var(--k, 1)); }
-  .anim svg { width:100%; height:100%; display:block; overflow:visible; }
+  /* схема линии: кот на самокате проезжает остановки */
+  .anim { position:relative; container-type:inline-size; height:calc(clamp(48px, 9vh, 86px) * var(--k, 1));
+          display:flex; align-items:flex-end; }
+  .anim svg { width:100%; height:auto; aspect-ratio:320 / 18; display:block; overflow:visible; }
   .rl { stroke:#15161c; stroke-width:4; stroke-linecap:round; }
   .sd { fill:#fff; stroke:#15161c; stroke-width:2.5; transition:fill .25s; }
   .sd.lit { fill:#ffd36b; }
-  .bus .b { fill:#15161c; } .bus .g { fill:#fff; } .bus .w { fill:#15161c; stroke:#b9c7f5; stroke-width:1.2; } .bus .h { fill:#b9c7f5; }
   .card.back .rl { stroke:#e4e7f6; }
   .card.back .sd { fill:#3c3b44; stroke:#e4e7f6; } .card.back .sd.lit { fill:#ffd36b; }
-  .card.back .bus .b { fill:#e4e7f6; } .card.back .bus .g { fill:#2a2930; } .card.back .bus .w { fill:#141416; stroke:#3c3b44; } .card.back .bus .h { fill:#e4e7f6; }
-  .bus .wh { transform-box:fill-box; transform-origin:center; animation:wspin .5s linear infinite; }
-  @keyframes wspin { to { transform:rotate(360deg); } }
+  .rider { position:absolute; bottom:calc(100cqw * 9 / 320 - 3px); height:calc(100% - 100cqw * 9 / 320 + 6px);
+           transform:translateX(-88%); pointer-events:none; }
+  .rider img { height:100%; width:auto; display:block; transform-origin:30% 95%;
+               animation:ride .42s ease-in-out infinite alternate; filter:drop-shadow(0 2px 2px rgba(0,0,0,.18)); }
+  @keyframes ride { from { transform:translateY(0) rotate(-1.5deg); } to { transform:translateY(-2px) rotate(1.5deg); } }
   @media (max-height: 560px) { .anim { display:none; } }
-  @media (prefers-reduced-motion: reduce) { .bus .wh { animation:none; } }
+  @media (prefers-reduced-motion: reduce) { .rider img { animation:none; } }
   .meta { display:flex; align-items:center; gap:7px; font-size:calc(clamp(15px, min(4.6vw, 2.5vh), 21px) * var(--k, 1)); flex-wrap:wrap; row-gap:2px; }
   .meta svg { width:1em; height:1em; fill:none; stroke:currentColor; stroke-width:1.8; flex:none; }
   .meta .sep { opacity:.45; }
@@ -449,31 +451,33 @@ function statusOf(t) {
   return { cls: "ontime", txt: "вовремя" };
 }
 
-// Схема линии: точки = настоящие промежуточные остановки ближайшего рейса (не больше 8 на экране)
-const RX0 = 22, RX1 = 298, RY = 33;
+// Схема линии: точки = настоящие промежуточные остановки ближайшего рейса (не больше 8 на экране).
+// По линии едет кот на самокате и «зажигает» пройденные остановки.
+const RX0 = 10, RX1 = 310, RY = 9;
 function routeSvg(via, phase) {
   const n = Math.min(Math.max(via | 0, 0), 8);
   const xs = [RX0, ...Array.from({ length: n }, (_, i) => RX0 + (RX1 - RX0) * (i + 1) / (n + 1)), RX1];
-  return `<div class="anim"><svg viewBox="0 0 320 42" preserveAspectRatio="xMidYMid meet" data-phase="${phase}">
-    <line class="rl" x1="${RX0}" y1="${RY}" x2="${RX1}" y2="${RY}"/>
-    ${xs.map((x, i) => `<circle class="sd" cx="${x}" cy="${RY}" r="${i === 0 || i === xs.length - 1 ? 6 : 4}"/>`).join("")}
-    <g class="bus" transform="translate(${RX0},${RY})">
-      <rect class="b" x="-21" y="-30" width="42" height="21" rx="6"/>
-      <rect class="g" x="-16" y="-26" width="21" height="7" rx="2"/><rect class="g" x="9" y="-26" width="8" height="12" rx="2"/>
-      <g class="wh"><circle class="w" cx="-11" cy="-7" r="5"/><circle class="h" cx="-11" cy="-7" r="1.8"/><rect class="h" x="-11.6" y="-11.2" width="1.2" height="2.4"/></g>
-      <g class="wh"><circle class="w" cx="11" cy="-7" r="5"/><circle class="h" cx="11" cy="-7" r="1.8"/><rect class="h" x="10.4" y="-11.2" width="1.2" height="2.4"/></g>
-    </g></svg></div>`;
+  return `<div class="anim" data-phase="${phase}">
+    <svg viewBox="0 0 320 18" preserveAspectRatio="xMidYMid meet">
+      <line class="rl" x1="${RX0}" y1="${RY}" x2="${RX1}" y2="${RY}"/>
+      ${xs.map((x, i) => `<circle class="sd" cx="${x}" cy="${RY}" r="${i === 0 || i === xs.length - 1 ? 6 : 4}"/>`).join("")}
+    </svg>
+    <span class="rider"><img src="cat.png" alt="" draggable="false"></span>
+  </div>`;
 }
 const RM = window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches;
 function animRoutes(now) {
-  document.querySelectorAll(".anim svg").forEach(svg => {
-    const ph = +svg.dataset.phase || 0;
-    const p = (((now + ph) % 7000) + 7000) % 7000 / 7000;
+  document.querySelectorAll(".anim").forEach(el => {
+    const ph = +el.dataset.phase || 0;
+    const p = (((now + ph) % 8000) + 8000) % 8000 / 8000;
     const e = p < .85 ? p / .85 : 1;
     const f = RM ? .5 : (e < .5 ? 2 * e * e : 1 - Math.pow(-2 * e + 2, 2) / 2);
-    const x = RX0 + (RX1 - RX0) * f;
-    svg.querySelector(".bus").setAttribute("transform", `translate(${x},${RY})`);
-    svg.querySelectorAll(".sd").forEach(c => c.classList.toggle("lit", +c.getAttribute("cx") <= x + 1));
+    // точку на линии отмечает переднее колесо самоката (88% ширины картинки) — кот всегда целиком в карточке
+    const W = el.clientWidth, rider = el.querySelector(".rider"), cw = rider.offsetWidth || 0;
+    const from = cw * 0.88, to = W * RX1 / 320;
+    const xp = from + Math.max(to - from, 0) * f;
+    rider.style.left = xp + "px";
+    el.querySelectorAll(".sd").forEach(c => c.classList.toggle("lit", (+c.getAttribute("cx")) * W / 320 <= xp + 1));
   });
   if (!RM) requestAnimationFrame(animRoutes);
 }
