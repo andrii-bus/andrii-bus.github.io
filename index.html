@@ -2,9 +2,9 @@
 <html lang="ru">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#070b1f">
-<meta name="app-version" content="bus-v8">
+<meta name="app-version" content="bus-v9">
 <title>Куда едем?</title>
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="icon-192.png" type="image/png">
@@ -18,18 +18,19 @@
     --teal:#46f0d2; --teal2:#2bb8ff; --green:#4cff9a; --blue:#4b8dff;
     --violet:#c77dff; --violet2:#8b5cff; --pink:#e05bff; --indigo:#6d7bff;
     --late:#ff6b7a; --warn:#ffc65c; --ok:#5cffb0;
+    --gap:clamp(8px, 1.4vh, 14px);
   }
   * { box-sizing:border-box; }
+  html, body { height:100%; }
   html { background:var(--bg); }
   body {
-    margin:0; min-height:100vh; color:var(--text);
+    margin:0; color:var(--text); overflow-x:hidden;
     font-family:Manrope, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
     background:
       radial-gradient(120% 60% at 50% -10%, #1a2a6c 0%, rgba(26,42,108,0) 60%),
       radial-gradient(80% 50% at 100% 60%, rgba(120,60,200,.25) 0%, rgba(0,0,0,0) 70%),
       linear-gradient(180deg, #0b1233 0%, #070b1f 55%, #050816 100%);
     -webkit-tap-highlight-color:transparent;
-    overflow-x:hidden;
   }
   /* перспективная сетка «пола», как на образце */
   body::before {
@@ -43,16 +44,21 @@
     -webkit-mask-image:linear-gradient(to top, #000 10%, transparent 85%);
     pointer-events:none; z-index:0;
   }
-  main { position:relative; z-index:1; max-width:520px; margin:0 auto; padding:18px 16px 28px; }
+  /* весь главный экран = ровно высота окна, без прокрутки */
+  main { position:relative; z-index:1; max-width:520px; margin:0 auto;
+         height:100vh; height:100dvh; display:flex; flex-direction:column; gap:var(--gap);
+         padding:calc(env(safe-area-inset-top) + clamp(8px, 1.6vh, 16px)) 14px calc(env(safe-area-inset-bottom) + 6px); }
 
   /* ===== шапка ===== */
-  .top { display:flex; align-items:center; justify-content:space-between; gap:12px; margin:6px 2px 14px; }
-  h1 { font-size:clamp(22px, 6.3vw, 34px); white-space:nowrap; font-weight:700; margin:0; letter-spacing:-.3px; }
-  .radar { width:46px; height:46px; border-radius:50%; border:1.5px solid rgba(70,240,210,.55);
+  .top { display:flex; align-items:center; justify-content:space-between; gap:10px; flex:none; }
+  h1 { font-size:clamp(20px, min(6.2vw, 3.3vh), 32px); font-weight:700; margin:0; letter-spacing:-.3px; white-space:nowrap; }
+  .status { font-size:12px; font-weight:600; color:var(--muted); margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .status.warn { color:var(--warn); }
+  .radar { width:42px; height:42px; border-radius:50%; border:1.5px solid rgba(70,240,210,.55);
            background:radial-gradient(circle, rgba(70,240,210,.18), rgba(70,240,210,0) 70%);
            box-shadow:0 0 18px rgba(70,240,210,.35); position:relative; flex:none; cursor:pointer; padding:0; }
-  .radar::before, .radar::after { content:""; position:absolute; inset:9px; border-radius:50%; border:1.5px solid rgba(70,240,210,.45); }
-  .radar::after { inset:17px; background:var(--teal); border:none; box-shadow:0 0 10px var(--teal); }
+  .radar::before, .radar::after { content:""; position:absolute; inset:8px; border-radius:50%; border:1.5px solid rgba(70,240,210,.45); }
+  .radar::after { inset:16px; background:var(--teal); border:none; box-shadow:0 0 10px var(--teal); }
   .radar .sweep { position:absolute; inset:2px; border-radius:50%;
                   background:conic-gradient(from 0deg, rgba(70,240,210,.55), rgba(70,240,210,0) 25%, transparent);
                   animation:spin 2.4s linear infinite; opacity:0; transition:opacity .3s; }
@@ -62,131 +68,147 @@
   @keyframes spin { to { transform:rotate(360deg); } }
 
   /* ===== выбор «работы» ===== */
-  .work { display:flex; align-items:center; gap:10px; margin:0 2px 16px; }
-  .work span { color:var(--muted); font-size:14px; font-weight:700; text-transform:uppercase; letter-spacing:1px; }
+  .work { display:flex; align-items:center; gap:10px; flex:none; }
+  .work span { color:var(--muted); font-size:13px; font-weight:700; text-transform:uppercase; letter-spacing:1px; }
   .seg { display:flex; flex:1; background:rgba(16,24,52,.7); border:1px solid rgba(120,140,220,.25);
-         border-radius:16px; padding:4px; gap:4px; }
-  .seg button { flex:1; border:0; border-radius:12px; padding:10px 6px; font:inherit; font-size:15px; font-weight:800;
+         border-radius:14px; padding:3px; gap:3px; }
+  .seg button { flex:1; border:0; border-radius:11px; padding:clamp(6px, 1.1vh, 10px) 6px; font:inherit; font-size:15px; font-weight:800;
                 color:var(--muted); background:transparent; cursor:pointer; transition:all .2s; }
   .seg button.on { color:#06121a; background:linear-gradient(135deg, var(--teal), var(--teal2));
                    box-shadow:0 0 16px rgba(70,240,210,.45); }
 
-  /* ===== карточка ===== */
+  /* ===== карточки делят оставшуюся высоту поровну ===== */
+  .cards { flex:1; min-height:0; display:flex; flex-direction:column; gap:var(--gap); }
   .card {
     --c1:var(--teal); --c2:var(--teal2); --chipA:var(--green); --chipB:var(--blue); --rgb:70,240,210;
-    position:relative; overflow:hidden; border-radius:28px; padding:18px 18px 16px; margin-bottom:18px;
+    flex:1; min-height:0; position:relative; overflow:hidden; border-radius:24px;
+    padding:clamp(10px, 1.6vh, 18px) 14px;
+    display:flex; flex-direction:column; justify-content:space-between; gap:4px;
     background:var(--glass);
     border:1.5px solid rgba(var(--rgb),.55);
-    box-shadow:0 0 0 1px rgba(var(--rgb),.08) inset, 0 0 28px rgba(var(--rgb),.28), 0 18px 40px rgba(0,0,0,.45);
+    box-shadow:0 0 0 1px rgba(var(--rgb),.08) inset, 0 0 24px rgba(var(--rgb),.26), 0 14px 34px rgba(0,0,0,.45);
     backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px);
   }
   .card.back { --c1:var(--violet); --c2:var(--violet2); --chipA:var(--pink); --chipB:var(--indigo); --rgb:199,125,255; }
-  /* «карта» улиц в фоне карточки */
   .card::before {
     content:""; position:absolute; inset:0; opacity:.22; pointer-events:none;
     background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='360' height='360' viewBox='0 0 360 360' fill='none' stroke='%237f93d6' stroke-width='1.2'%3E%3Cpath d='M-10 60 C80 40 140 90 220 70 S330 30 380 50'/%3E%3Cpath d='M-10 170 L120 150 L250 190 L380 160'/%3E%3Cpath d='M-10 290 C90 270 160 320 260 280 S340 260 380 300'/%3E%3Cpath d='M60 -10 L80 120 L50 230 L70 380'/%3E%3Cpath d='M190 -10 C200 80 170 140 200 220 S210 330 190 380'/%3E%3Cpath d='M300 -10 L280 110 L320 250 L300 380'/%3E%3Cpath d='M0 110 L90 0 M240 360 L360 230 M120 360 L0 240' stroke-width='.8'/%3E%3C/svg%3E");
     background-size:360px 360px;
   }
   .card > * { position:relative; }
-  .label { font-size:clamp(22px, 6.4vw, 28px); font-weight:800; letter-spacing:.5px; text-transform:uppercase;
-           color:var(--c1); text-shadow:0 0 14px rgba(var(--rgb),.55); margin:0; }
-  .stops { color:var(--muted); font-size:13px; font-weight:600; margin:2px 0 6px; }
+  .head { display:flex; align-items:baseline; justify-content:space-between; gap:8px; }
+  .label { font-size:clamp(18px, min(5.6vw, 2.9vh), 26px); font-weight:800; letter-spacing:.4px; text-transform:uppercase;
+           color:var(--c1); text-shadow:0 0 14px rgba(var(--rgb),.55); margin:0; white-space:nowrap; }
+  .stops { color:var(--muted); font-size:12px; font-weight:600; text-align:right; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 
-  .route { display:flex; align-items:center; gap:8px; margin:6px 0 2px; }
-  .node { width:62px; height:62px; flex:none; border-radius:50%; display:grid; place-items:center;
+  .route { display:flex; align-items:center; gap:6px; }
+  .node { --n:clamp(34px, 5.2vh, 58px); width:var(--n); height:var(--n); flex:none; border-radius:50%; display:grid; place-items:center;
           background:radial-gradient(circle at 35% 30%, rgba(255,255,255,.14), rgba(255,255,255,.02) 60%), rgba(10,16,38,.9);
-          border:1.5px solid rgba(var(--rgb),.45); box-shadow:0 0 16px rgba(var(--rgb),.3), inset 0 0 12px rgba(var(--rgb),.15); }
-  .node svg { width:30px; height:30px; fill:color-mix(in srgb, var(--c1) 60%, #cfd8ff); }
-  .path { flex:1; height:60px; }
+          border:1.5px solid rgba(var(--rgb),.45); box-shadow:0 0 14px rgba(var(--rgb),.3), inset 0 0 12px rgba(var(--rgb),.15); }
+  .node svg { width:52%; height:52%; fill:color-mix(in srgb, var(--c1) 60%, #cfd8ff); }
+  .path { flex:1; height:clamp(28px, 4.5vh, 52px); }
   .path .glow { stroke:var(--c1); stroke-width:4; fill:none; stroke-linecap:round; filter:drop-shadow(0 0 6px var(--c1)); opacity:.9; }
-  .path .dash { stroke:#fff; stroke-width:2; fill:none; stroke-linecap:round; stroke-dasharray:4 14; opacity:.75;
-                animation:flow 1.6s linear infinite; }
-  .path .head { fill:var(--c1); filter:drop-shadow(0 0 6px var(--c1)); }
+  .path .dash { stroke:#fff; stroke-width:2; fill:none; stroke-linecap:round; stroke-dasharray:4 14; opacity:.75; animation:flow 1.6s linear infinite; }
+  .path .head2 { fill:var(--c1); filter:drop-shadow(0 0 6px var(--c1)); }
   @keyframes flow { to { stroke-dashoffset:-36; } }
 
-  .big { margin:6px 0 6px; text-align:center; font-weight:800; line-height:1;
-         font-size:clamp(30px, 9.6vw, 58px); letter-spacing:-1.2px; white-space:nowrap; text-transform:uppercase;
+  .big { text-align:center; font-weight:800; line-height:1.02; white-space:nowrap;
+         font-size:clamp(28px, min(9.6vw, 5.6vh), 58px); letter-spacing:-1.2px; text-transform:uppercase;
          background:linear-gradient(180deg, #ffffff 10%, color-mix(in srgb, var(--c1) 70%, #fff) 60%, var(--c1));
          -webkit-background-clip:text; background-clip:text; color:transparent;
          filter:drop-shadow(0 0 14px rgba(var(--rgb),.55)); }
-  .big.small { font-size:clamp(28px, 8.4vw, 40px); }
+  .big.small { font-size:clamp(24px, min(8vw, 4.4vh), 40px); }
 
-  .pill { display:flex; justify-content:center; flex-wrap:wrap; gap:6px; text-align:center;
-          background:rgba(5,9,24,.55); border:1px solid rgba(160,175,230,.18); border-radius:14px;
-          padding:7px 12px; color:#c9d2f2; font-size:13.5px; font-weight:600; margin:0 auto 12px; width:fit-content; max-width:100%; }
+  .pill { display:flex; justify-content:center; flex-wrap:wrap; gap:4px 6px; align-self:center; max-width:100%;
+          background:rgba(5,9,24,.55); border:1px solid rgba(160,175,230,.18); border-radius:12px;
+          padding:5px 12px; color:#c9d2f2; font-size:13.5px; font-weight:600; }
   .pill b { color:#fff; font-weight:800; }
   .pill span, .nw { white-space:nowrap; }
 
-  .chips { display:flex; justify-content:center; gap:10px; flex-wrap:wrap; margin-bottom:12px; }
-  .chip { --cc:var(--chipA); display:inline-flex; align-items:center; gap:8px; padding:8px 16px; border-radius:999px;
-          font-weight:800; font-size:20px; color:var(--cc);
+  .chips { display:flex; justify-content:center; gap:8px; flex-wrap:nowrap; overflow:hidden; }
+  .chip { --cc:var(--chipA); display:inline-flex; align-items:center; gap:6px; padding:clamp(3px, .7vh, 7px) 14px; border-radius:999px;
+          font-weight:800; font-size:clamp(15px, 2.3vh, 20px); color:var(--cc); white-space:nowrap;
           background:linear-gradient(180deg, color-mix(in srgb, var(--cc) 22%, transparent), color-mix(in srgb, var(--cc) 8%, transparent));
-          border:1.5px solid var(--cc); box-shadow:0 0 14px color-mix(in srgb, var(--cc) 45%, transparent), inset 0 0 10px color-mix(in srgb, var(--cc) 25%, transparent); }
+          border:1.5px solid var(--cc); box-shadow:0 0 12px color-mix(in srgb, var(--cc) 45%, transparent), inset 0 0 10px color-mix(in srgb, var(--cc) 25%, transparent); }
   .chip:nth-child(even) { --cc:var(--chipB); }
-  .chip svg { width:24px; height:24px; fill:currentColor; }
+  .chip svg { width:1.15em; height:1.15em; fill:currentColor; }
 
-  .foot { display:flex; align-items:center; gap:10px; background:rgba(5,9,24,.55); border:1px solid rgba(160,175,230,.18);
-          border-radius:16px; padding:10px 12px; font-size:14px; font-weight:600; color:#c9d2f2; }
-  .foot .ico { font-size:18px; flex:none; }
-  .foot .txt { flex:1; }
-  .bars { display:flex; align-items:flex-end; gap:3px; height:18px; flex:none; }
+  .foot { display:flex; align-items:center; gap:8px; background:rgba(5,9,24,.55); border:1px solid rgba(160,175,230,.18);
+          border-radius:14px; padding:6px 6px 6px 10px; font-size:13px; font-weight:600; color:#c9d2f2; }
+  .foot .ico { font-size:16px; flex:none; }
+  .foot .txt { flex:1; min-width:0; line-height:1.3; }
+  .foot small { color:var(--muted); }
+  .bars { display:flex; align-items:flex-end; gap:3px; height:16px; flex:none; }
   .bars i { width:4px; border-radius:2px; background:rgba(160,175,230,.25); }
-  .bars i:nth-child(1){height:6px} .bars i:nth-child(2){height:11px} .bars i:nth-child(3){height:16px}
+  .bars i:nth-child(1){height:5px} .bars i:nth-child(2){height:10px} .bars i:nth-child(3){height:15px}
   .bars.live i { background:var(--ok); box-shadow:0 0 6px var(--ok); }
   .bars.sched i:nth-child(1) { background:var(--muted); }
+  .more { flex:none; border:1px solid rgba(var(--rgb),.45); background:rgba(var(--rgb),.12); color:var(--c1);
+          border-radius:10px; padding:8px 10px; font:inherit; font-size:13px; font-weight:800; cursor:pointer; }
   .late { color:var(--late); } .early { color:var(--warn); } .ontime { color:var(--ok); }
 
-  .more { display:block; width:100%; margin-top:10px; padding:10px; border-radius:14px; cursor:pointer;
-          border:1px solid rgba(var(--rgb),.35); background:rgba(var(--rgb),.07); color:var(--c1);
-          font:inherit; font-weight:800; font-size:14px; letter-spacing:.3px; }
-  .list { list-style:none; margin:10px 0 0; padding:0; display:none; }
-  .card.open .list { display:block; }
+  footer { flex:none; font-size:11px; color:#6f7aa0; text-align:center; }
+  footer a { color:#8e9ac4; }
+
+  /* низкие экраны: сначала убираем картинку маршрута, потом значки линий */
+  @media (max-height: 700px) { .route { display:none; } }
+  @media (max-height: 590px) { .chips { display:none; } }
+
+  /* ===== панель «Все рейсы» ===== */
+  .sheet { position:fixed; inset:0; z-index:10; display:flex; flex-direction:column; justify-content:flex-end; }
+  .sheet[hidden] { display:none; }
+  .sheet-bg { position:absolute; inset:0; background:rgba(2,4,14,.6); backdrop-filter:blur(3px); -webkit-backdrop-filter:blur(3px); }
+  .sheet-panel { --c1:var(--teal); --rgb:70,240,210; position:relative; max-width:520px; width:100%; margin:0 auto; max-height:82dvh;
+                 display:flex; flex-direction:column; border-radius:24px 24px 0 0; background:#0c1330;
+                 border:1.5px solid rgba(var(--rgb),.5); border-bottom:0; box-shadow:0 -10px 40px rgba(var(--rgb),.25);
+                 padding:14px 14px calc(env(safe-area-inset-bottom) + 12px); }
+  .sheet-panel.back { --c1:var(--violet); --rgb:199,125,255; }
+  .sheet-head { display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:6px; }
+  .sheet-head h3 { margin:0; font-size:18px; color:var(--c1); }
+  .sheet-head button { border:0; background:rgba(255,255,255,.08); color:var(--text); width:36px; height:36px; border-radius:50%; font-size:18px; cursor:pointer; }
+  .list { list-style:none; margin:0; padding:0; overflow-y:auto; -webkit-overflow-scrolling:touch; }
   .list li { display:grid; grid-template-columns:auto 1fr auto; gap:2px 10px; align-items:center;
-             padding:10px 4px; border-top:1px solid rgba(160,175,230,.14); }
+             padding:10px 2px; border-top:1px solid rgba(160,175,230,.14); }
   .list .ln { grid-row:span 2; min-width:48px; text-align:center; padding:6px 8px; border-radius:10px; font-weight:800;
               color:var(--c1); border:1px solid rgba(var(--rgb),.5); background:rgba(var(--rgb),.1); }
   .list .t { font-size:19px; font-weight:800; }
   .list .in { font-size:17px; font-weight:800; text-align:right; }
   .list .sub { grid-column:2 / 4; font-size:12.5px; color:var(--muted); }
   .list li.cancelled { opacity:.5; } .list li.cancelled .t { text-decoration:line-through; }
-  .list .empty { color:var(--muted); text-align:center; padding:12px; border:0; display:block; }
-
-  .banner { display:none; margin:0 0 14px; padding:10px 14px; border-radius:14px; font-size:14px; font-weight:600;
-            background:rgba(255,198,92,.12); border:1px solid rgba(255,198,92,.5); color:#ffd890; }
-  .status { display:flex; align-items:center; justify-content:space-between; gap:10px; color:var(--muted); font-size:13px; margin:4px 2px 10px; }
-  .status button { border:1px solid rgba(120,140,220,.35); background:rgba(16,24,52,.7); color:var(--text);
-                   border-radius:12px; padding:8px 14px; font:inherit; font-size:14px; font-weight:700; cursor:pointer; }
-  footer { font-size:12px; color:#6f7aa0; line-height:1.6; margin:4px 2px 0; }
-  footer a { color:#8e9ac4; }
+  .list .empty { color:var(--muted); text-align:center; padding:12px; display:block; }
+  .legend { margin:8px 0 0; font-size:11.5px; color:#6f7aa0; }
 
   @media (prefers-reduced-motion: reduce) { .path .dash, .radar .sweep { animation:none; } }
 </style>
 </head>
 <body>
 <main>
-  <div class="top">
-    <h1>Куда едем сегодня?</h1>
+  <header class="top">
+    <div style="min-width:0">
+      <h1>Куда едем сегодня?</h1>
+      <div class="status" id="status">Загрузка…</div>
+    </div>
     <button class="radar" id="radar" type="button" aria-label="Обновить"><span class="sweep"></span></button>
-  </div>
+  </header>
 
   <div class="work">
     <span>Работа</span>
     <div class="seg" id="seg"></div>
   </div>
 
-  <div class="banner" id="banner"></div>
-  <div id="cards"></div>
+  <div class="cards" id="cards"></div>
 
-  <div class="status">
-    <span id="status">Загрузка…</span>
-    <button id="refresh" type="button">↻ Обновить</button>
-  </div>
-  <footer>
-    Данные: <a href="https://transitous.org/sources/" target="_blank" rel="noopener">Transitous</a>
-    (расписание и реальное время DELFI / AVV). Время немецкое.<br>
-    Полоски <span class="ontime">▮▮▮</span> — данные реального времени, серые — только расписание.
-  </footer>
+  <footer>Данные: <a href="https://transitous.org/sources/" target="_blank" rel="noopener">Transitous</a> · DELFI / AVV</footer>
 </main>
+
+<div class="sheet" id="sheet" hidden>
+  <div class="sheet-bg" data-close></div>
+  <div class="sheet-panel" id="sheetPanel">
+    <div class="sheet-head"><h3 id="sheetTitle"></h3><button type="button" data-close aria-label="Закрыть">✕</button></div>
+    <ul class="list" id="sheetList"></ul>
+    <p class="legend">Полоски <span class="ontime">▮▮▮</span> на карточке — данные реального времени, серые — только расписание. Время немецкое.</p>
+  </div>
+</div>
 
 <svg width="0" height="0" style="position:absolute" aria-hidden="true">
   <symbol id="i-home" viewBox="0 0 24 24"><path d="M12 3.2 2.5 11.1a1 1 0 0 0 1.3 1.5l.7-.6V20a1 1 0 0 0 1 1h4.5v-5.5h4V21H18.5a1 1 0 0 0 1-1v-8l.7.6a1 1 0 0 0 1.3-1.5L12 3.2z"/></symbol>
@@ -380,7 +402,8 @@ const minsTo = (iso, now) => Math.floor((new Date(iso).getTime() - now) / 60000)
 let work = WORKS.includes(store.get("work")) ? store.get("work") : WORKS[0];
 const state = {};                     // по ключу "from>to": { trips, at }
 const inflight = {};
-const open = {};                      // раскрыт ли список
+let sheetKey = null;                   // какое направление открыто в панели «Все рейсы»
+let notice = "";                       // предупреждение о связи (показываем в строке статуса)
 let lastTouch = Date.now();
 let lastError = null;
 
@@ -400,7 +423,7 @@ function pathSvg(back) {
   const d = back ? "M6 22 C40 22 50 42 90 40 S150 18 196 30" : "M6 34 C46 34 56 14 96 20 S150 44 196 28";
   return `<svg class="path" viewBox="0 0 210 60" preserveAspectRatio="none" aria-hidden="true">
     <path class="glow" d="${d}"/><path class="dash" d="${d}"/>
-    <path class="head" d="${back ? "M196 30 l-10 -7 l2 7 l-2 7z" : "M196 28 l-10 -7 l2 7 l-2 7z"}"/></svg>`;
+    <path class="head2" d="${back ? "M196 30 l-10 -7 l2 7 l-2 7z" : "M196 28 l-10 -7 l2 7 l-2 7z"}"/></svg>`;
 }
 
 function statusOf(t) {
@@ -424,7 +447,7 @@ function cardHtml(d) {
   } else if (!n0) {
     big = "Нет рейсов"; bigCls = "small";
     pill = `Прямых автобусов в ближайшие ${WINDOW_MIN} мин нет`;
-    foot = `<span class="txt">Нажмите «Обновить» позже</span>`;
+    foot = `<span class="txt">Загляните позже</span>`;
   } else {
     const m = minsTo(n0.dep, now);
     big = m <= 0 ? "Сейчас" : `Через ${m} мин`;
@@ -438,19 +461,8 @@ function cardHtml(d) {
       <span class="bars ${n0.realTime ? "live" : "sched"}" title="${n0.realTime ? "реальное время" : "только расписание"}"><i></i><i></i><i></i></span>`;
   }
 
-  const rows = trips.length ? trips.map(t => {
-    const m = minsTo(t.dep, now), s = statusOf(t);
-    return `<li class="${t.cancelled ? "cancelled" : ""}">
-      <span class="ln">${esc(t.line)}</span>
-      <span class="t">${hm(t.dep)}</span>
-      <span class="in">${t.cancelled ? "отмена" : m <= 0 ? "сейчас" : m + " мин"}</span>
-      <span class="sub"><span class="${s.cls}">● ${s.txt}</span>${s.cls === "late" && !t.cancelled ? ` (план ${hm(t.depSched)})` : ""} · прибытие ${hm(t.arr)}${t.headsign ? " · → " + esc(t.headsign) : ""}${t.track ? " · стоянка " + esc(t.track) : ""}</span>
-    </li>`;
-  }).join("") : `<li class="empty">Нет данных</li>`;
-
-  return `<section class="card ${d.cls}${open[k] ? " open" : ""}" data-k="${k}">
-    <h2 class="label">${d.label}</h2>
-    <div class="stops">${STOPS[d.from].full} → ${STOPS[d.to].full}</div>
+  return `<section class="card ${d.cls}" data-k="${k}">
+    <div class="head"><h2 class="label">${d.label}</h2><div class="stops">${STOPS[d.from].name} → ${STOPS[d.to].name}</div></div>
     <div class="route">
       <div class="node"><svg><use href="#${d.ico[0]}"/></svg></div>
       ${pathSvg(!!d.cls)}
@@ -459,24 +471,52 @@ function cardHtml(d) {
     <div class="big ${bigCls}">${big}</div>
     <div class="pill">${pill}</div>
     ${chips ? `<div class="chips">${chips}</div>` : ""}
-    <div class="foot">${foot}</div>
-    <button class="more" type="button" data-k="${k}">${open[k] ? "Скрыть ▴" : `Все рейсы${trips.length ? " (" + trips.length + ")" : ""} ▾`}</button>
-    <ul class="list">${rows}</ul>
+    <div class="foot">${foot}<button class="more" type="button" data-k="${k}">Все${trips.length ? " " + trips.length : ""} ›</button></div>
   </section>`;
+}
+
+function sheetRows(k) {
+  const st = state[k], now = Date.now();
+  const trips = st ? st.trips.filter(t => new Date(t.dep).getTime() > now - 30_000) : [];
+  if (!trips.length) return `<li class="empty">Нет данных</li>`;
+  return trips.map(t => {
+    const m = minsTo(t.dep, now), s = statusOf(t);
+    return `<li class="${t.cancelled ? "cancelled" : ""}">
+      <span class="ln">${esc(t.line)}</span>
+      <span class="t">${hm(t.dep)}</span>
+      <span class="in">${t.cancelled ? "отмена" : m <= 0 ? "сейчас" : m + " мин"}</span>
+      <span class="sub"><span class="${s.cls}">● ${s.txt}</span>${s.cls === "late" && !t.cancelled ? ` (план ${hm(t.depSched)})` : ""} · прибытие ${hm(t.arr)}${t.headsign ? " · → " + esc(t.headsign) : ""}${t.track ? " · стоянка " + esc(t.track) : ""}</span>
+    </li>`;
+  }).join("");
+}
+
+function renderSheet() {
+  const sh = $("sheet");
+  const d = sheetKey && dirs().find(x => keyOf(x) === sheetKey);
+  if (!d) { sh.hidden = true; return; }
+  $("sheetPanel").className = "sheet-panel " + d.cls;
+  $("sheetTitle").textContent = `${STOPS[d.from].full} → ${STOPS[d.to].full}`;
+  const list = $("sheetList"), y = list.scrollTop;
+  list.innerHTML = sheetRows(sheetKey);
+  list.scrollTop = y;
+  sh.hidden = false;
 }
 
 function render() {
   $("cards").innerHTML = dirs().map(cardHtml).join("");
   const ats = dirs().map(d => state[keyOf(d)] && state[keyOf(d)].at).filter(Boolean);
   const paused = Date.now() - lastTouch > AUTO_REFRESH_LIMIT_MS;
-  $("status").textContent = ats.length
-    ? `Обновлено ${fmtS.format(new Date(Math.min(...ats)))}${paused ? " · автообновление на паузе" : ""}`
+  const st = $("status");
+  st.classList.toggle("warn", !!notice);
+  st.textContent = notice ? "⚠ " + notice
+    : ats.length ? `Обновлено ${fmtS.format(new Date(Math.min(...ats)))}${paused ? " · автообновление на паузе" : ""}`
     : (Object.keys(inflight).length ? "Загрузка…" : "Нет данных");
   $("radar").classList.toggle("busy", Object.keys(inflight).length > 0);
   $("radar").classList.toggle("offline", !!lastError);
+  renderSheet();
 }
 
-function setBanner(text) { const b = $("banner"); b.textContent = text || ""; b.style.display = text ? "block" : "none"; }
+function setBanner(text) { notice = text || ""; }
 
 function load(k) {
   if (!inflight[k]) {
@@ -513,10 +553,10 @@ async function doLoad(k) {
     const cached = state[k] || store.get("cache3:" + k);
     if (cached) {
       state[k] = cached;
-      setBanner(`Нет связи с сервером данных. Показаны данные от ${fmt.format(new Date(cached.at))} — время могло измениться.`);
+      setBanner(`Нет связи · данные от ${fmt.format(new Date(cached.at))}`);
     } else {
       state[k] = { trips: [], at: 0 };
-      setBanner("Не удалось загрузить данные. Проверьте интернет и нажмите «Обновить».");
+      setBanner("Нет связи · нажмите на радар");
     }
   }
 }
@@ -530,13 +570,14 @@ $("seg").addEventListener("click", e => {
   const b = e.target.closest("button[data-w]"); if (!b || b.dataset.w === work) return;
   work = b.dataset.w; store.set("work", work); lastTouch = Date.now();
   dirs().forEach(d => { const k = keyOf(d); if (!state[k]) { const c = store.get("cache3:" + k); if (c) state[k] = c; } });
-  renderSeg(); render(); loadAll();
+  sheetKey = null; renderSeg(); render(); loadAll();
 });
 $("cards").addEventListener("click", e => {
   const b = e.target.closest(".more"); if (!b) return;
-  open[b.dataset.k] = !open[b.dataset.k]; lastTouch = Date.now(); render();
+  sheetKey = b.dataset.k; lastTouch = Date.now(); renderSheet();
 });
-$("refresh").addEventListener("click", touchAndLoad);
+$("sheet").addEventListener("click", e => { if (e.target.closest("[data-close]")) { sheetKey = null; renderSheet(); } });
+document.addEventListener("keydown", e => { if (e.key === "Escape" && sheetKey) { sheetKey = null; renderSheet(); } });
 $("radar").addEventListener("click", touchAndLoad);
 document.addEventListener("visibilitychange", () => { if (!document.hidden) touchAndLoad(); });
 
