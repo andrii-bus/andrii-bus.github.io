@@ -1,0 +1,60 @@
+name: bus-check
+# Checks the site: data source answers, CORS is open, and the live page shows departures in a real browser.
+on:
+  push:
+    branches: [main]
+    paths: ['**']
+  workflow_dispatch:
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Stops in the data source
+        run: |
+          for q in "Schanz (Jakobstraße) Aachen" "Bushof Aachen" "Kaiserplatz Aachen"; do
+            echo "=== $q"
+            curl -sS -G "https://api.transitous.org/api/v1/geocode" -H "Referer: https://andrii-bus.github.io/" \
+              --data-urlencode "text=$q" --data-urlencode "type=STOP" --data-urlencode "numResults=20" --data-urlencode "place=50.7753,6.0839" \
+              | jq -c '.[:3][] | {name,id}'
+          done
+      - name: CORS
+        run: |
+          curl -sS -D - -o /dev/null -H "Origin: https://andrii-bus.github.io" \
+            "https://api.transitous.org/api/v1/geocode?text=Bushof%20Aachen&type=STOP" | grep -i -E "^(HTTP|access-control)"
+      - name: Wait for the deployed page
+        run: |
+          for i in $(seq 1 40); do
+            if curl -sS "https://andrii-bus.github.io/?t=$(date +%s)" | grep -q 'bus-v7'; then echo "live"; exit 0; fi
+            sleep 15
+          done
+          echo "page not live"; exit 1
+      - name: Open the page in Chromium
+        run: |
+          npm i --no-save playwright@1 >/dev/null 2>&1
+          npx playwright install --with-deps chromium >/dev/null 2>&1
+          cat > check.mjs <<'JS'
+          import { chromium } from 'playwright';
+          const b = await chromium.launch();
+          const p = await b.newPage({ viewport:{width:390,height:844}, timezoneId:'Europe/Berlin', locale:'ru-RU' });
+          p.on('console', m => console.log('[console]', m.type(), m.text()));
+          p.on('requestfailed', r => console.log('[failed]', r.url(), r.failure()?.errorText));
+          p.on('response', r => { if (r.url().includes('transitous')) console.log('[api]', r.status(), r.url().slice(0,160)); });
+          await p.goto('https://andrii-bus.github.io/?t=' + Date.now());
+          for (const w of ['bushof','kaiserplatz']) {
+            await p.locator(`.seg button[data-w=${w}]`).click();
+            await p.waitForTimeout(500);
+            await p.waitForFunction(() => /Обновлено/.test(document.getElementById('status').textContent) && !document.getElementById('radar').classList.contains('busy'), null, {timeout:60000}).catch(()=>console.log('TIMEOUT waiting for data'));
+            for (const c of await p.locator('.card').all()) { await c.locator('.more').click(); }
+            console.log('\n##### Работа: ' + w);
+            console.log('status:', await p.locator('#status').innerText());
+            console.log('banner:', await p.locator('#banner').innerText());
+            for (const c of await p.locator('.card').all()) console.log('-----\n' + (await c.innerText()).slice(0, 1800));
+            await p.screenshot({ path: `shot-${w}.png`, fullPage: true });
+            for (const c of await p.locator('.card').all()) { await c.locator('.more').click(); }
+          }
+          await b.close();
+          JS
+          node check.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with: { name: screenshots, path: 'shot-*.png' }

@@ -1,0 +1,557 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#070b1f">
+<meta name="app-version" content="bus-v7">
+<title>Куда едем?</title>
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:#070b1f; --text:#eef2ff; --muted:#9aa6c8; --glass:rgba(16,24,52,.62);
+    --teal:#46f0d2; --teal2:#2bb8ff; --green:#4cff9a; --blue:#4b8dff;
+    --violet:#c77dff; --violet2:#8b5cff; --pink:#e05bff; --indigo:#6d7bff;
+    --late:#ff6b7a; --warn:#ffc65c; --ok:#5cffb0;
+  }
+  * { box-sizing:border-box; }
+  html { background:var(--bg); }
+  body {
+    margin:0; min-height:100vh; color:var(--text);
+    font-family:Manrope, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    background:
+      radial-gradient(120% 60% at 50% -10%, #1a2a6c 0%, rgba(26,42,108,0) 60%),
+      radial-gradient(80% 50% at 100% 60%, rgba(120,60,200,.25) 0%, rgba(0,0,0,0) 70%),
+      linear-gradient(180deg, #0b1233 0%, #070b1f 55%, #050816 100%);
+    -webkit-tap-highlight-color:transparent;
+    overflow-x:hidden;
+  }
+  /* перспективная сетка «пола», как на образце */
+  body::before {
+    content:""; position:fixed; left:-50%; right:-50%; bottom:-10%; height:55%;
+    background-image:
+      linear-gradient(rgba(90,120,255,.16) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(90,120,255,.16) 1px, transparent 1px);
+    background-size:44px 44px;
+    transform:perspective(420px) rotateX(62deg); transform-origin:bottom;
+    mask-image:linear-gradient(to top, #000 10%, transparent 85%);
+    -webkit-mask-image:linear-gradient(to top, #000 10%, transparent 85%);
+    pointer-events:none; z-index:0;
+  }
+  main { position:relative; z-index:1; max-width:520px; margin:0 auto; padding:18px 16px 28px; }
+
+  /* ===== шапка ===== */
+  .top { display:flex; align-items:center; justify-content:space-between; gap:12px; margin:6px 2px 14px; }
+  h1 { font-size:clamp(22px, 6.3vw, 34px); white-space:nowrap; font-weight:700; margin:0; letter-spacing:-.3px; }
+  .radar { width:46px; height:46px; border-radius:50%; border:1.5px solid rgba(70,240,210,.55);
+           background:radial-gradient(circle, rgba(70,240,210,.18), rgba(70,240,210,0) 70%);
+           box-shadow:0 0 18px rgba(70,240,210,.35); position:relative; flex:none; cursor:pointer; padding:0; }
+  .radar::before, .radar::after { content:""; position:absolute; inset:9px; border-radius:50%; border:1.5px solid rgba(70,240,210,.45); }
+  .radar::after { inset:17px; background:var(--teal); border:none; box-shadow:0 0 10px var(--teal); }
+  .radar .sweep { position:absolute; inset:2px; border-radius:50%;
+                  background:conic-gradient(from 0deg, rgba(70,240,210,.55), rgba(70,240,210,0) 25%, transparent);
+                  animation:spin 2.4s linear infinite; opacity:0; transition:opacity .3s; }
+  .radar.busy .sweep { opacity:1; }
+  .radar.offline { border-color:rgba(255,198,92,.7); box-shadow:0 0 18px rgba(255,198,92,.4); }
+  .radar.offline::after { background:var(--warn); box-shadow:0 0 10px var(--warn); }
+  @keyframes spin { to { transform:rotate(360deg); } }
+
+  /* ===== выбор «работы» ===== */
+  .work { display:flex; align-items:center; gap:10px; margin:0 2px 16px; }
+  .work span { color:var(--muted); font-size:14px; font-weight:700; text-transform:uppercase; letter-spacing:1px; }
+  .seg { display:flex; flex:1; background:rgba(16,24,52,.7); border:1px solid rgba(120,140,220,.25);
+         border-radius:16px; padding:4px; gap:4px; }
+  .seg button { flex:1; border:0; border-radius:12px; padding:10px 6px; font:inherit; font-size:15px; font-weight:800;
+                color:var(--muted); background:transparent; cursor:pointer; transition:all .2s; }
+  .seg button.on { color:#06121a; background:linear-gradient(135deg, var(--teal), var(--teal2));
+                   box-shadow:0 0 16px rgba(70,240,210,.45); }
+
+  /* ===== карточка ===== */
+  .card {
+    --c1:var(--teal); --c2:var(--teal2); --chipA:var(--green); --chipB:var(--blue); --rgb:70,240,210;
+    position:relative; overflow:hidden; border-radius:28px; padding:18px 18px 16px; margin-bottom:18px;
+    background:var(--glass);
+    border:1.5px solid rgba(var(--rgb),.55);
+    box-shadow:0 0 0 1px rgba(var(--rgb),.08) inset, 0 0 28px rgba(var(--rgb),.28), 0 18px 40px rgba(0,0,0,.45);
+    backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px);
+  }
+  .card.back { --c1:var(--violet); --c2:var(--violet2); --chipA:var(--pink); --chipB:var(--indigo); --rgb:199,125,255; }
+  /* «карта» улиц в фоне карточки */
+  .card::before {
+    content:""; position:absolute; inset:0; opacity:.22; pointer-events:none;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='360' height='360' viewBox='0 0 360 360' fill='none' stroke='%237f93d6' stroke-width='1.2'%3E%3Cpath d='M-10 60 C80 40 140 90 220 70 S330 30 380 50'/%3E%3Cpath d='M-10 170 L120 150 L250 190 L380 160'/%3E%3Cpath d='M-10 290 C90 270 160 320 260 280 S340 260 380 300'/%3E%3Cpath d='M60 -10 L80 120 L50 230 L70 380'/%3E%3Cpath d='M190 -10 C200 80 170 140 200 220 S210 330 190 380'/%3E%3Cpath d='M300 -10 L280 110 L320 250 L300 380'/%3E%3Cpath d='M0 110 L90 0 M240 360 L360 230 M120 360 L0 240' stroke-width='.8'/%3E%3C/svg%3E");
+    background-size:360px 360px;
+  }
+  .card > * { position:relative; }
+  .label { font-size:clamp(22px, 6.4vw, 28px); font-weight:800; letter-spacing:.5px; text-transform:uppercase;
+           color:var(--c1); text-shadow:0 0 14px rgba(var(--rgb),.55); margin:0; }
+  .stops { color:var(--muted); font-size:13px; font-weight:600; margin:2px 0 6px; }
+
+  .route { display:flex; align-items:center; gap:8px; margin:6px 0 2px; }
+  .node { width:62px; height:62px; flex:none; border-radius:50%; display:grid; place-items:center;
+          background:radial-gradient(circle at 35% 30%, rgba(255,255,255,.14), rgba(255,255,255,.02) 60%), rgba(10,16,38,.9);
+          border:1.5px solid rgba(var(--rgb),.45); box-shadow:0 0 16px rgba(var(--rgb),.3), inset 0 0 12px rgba(var(--rgb),.15); }
+  .node svg { width:30px; height:30px; fill:color-mix(in srgb, var(--c1) 60%, #cfd8ff); }
+  .path { flex:1; height:60px; }
+  .path .glow { stroke:var(--c1); stroke-width:4; fill:none; stroke-linecap:round; filter:drop-shadow(0 0 6px var(--c1)); opacity:.9; }
+  .path .dash { stroke:#fff; stroke-width:2; fill:none; stroke-linecap:round; stroke-dasharray:4 14; opacity:.75;
+                animation:flow 1.6s linear infinite; }
+  .path .head { fill:var(--c1); filter:drop-shadow(0 0 6px var(--c1)); }
+  @keyframes flow { to { stroke-dashoffset:-36; } }
+
+  .big { margin:6px 0 6px; text-align:center; font-weight:800; line-height:1;
+         font-size:clamp(30px, 9.6vw, 58px); letter-spacing:-1.2px; white-space:nowrap; text-transform:uppercase;
+         background:linear-gradient(180deg, #ffffff 10%, color-mix(in srgb, var(--c1) 70%, #fff) 60%, var(--c1));
+         -webkit-background-clip:text; background-clip:text; color:transparent;
+         filter:drop-shadow(0 0 14px rgba(var(--rgb),.55)); }
+  .big.small { font-size:clamp(28px, 8.4vw, 40px); }
+
+  .pill { display:flex; justify-content:center; flex-wrap:wrap; gap:6px; text-align:center;
+          background:rgba(5,9,24,.55); border:1px solid rgba(160,175,230,.18); border-radius:14px;
+          padding:7px 12px; color:#c9d2f2; font-size:13.5px; font-weight:600; margin:0 auto 12px; width:fit-content; max-width:100%; }
+  .pill b { color:#fff; font-weight:800; }
+  .pill span, .nw { white-space:nowrap; }
+
+  .chips { display:flex; justify-content:center; gap:10px; flex-wrap:wrap; margin-bottom:12px; }
+  .chip { --cc:var(--chipA); display:inline-flex; align-items:center; gap:8px; padding:8px 16px; border-radius:999px;
+          font-weight:800; font-size:20px; color:var(--cc);
+          background:linear-gradient(180deg, color-mix(in srgb, var(--cc) 22%, transparent), color-mix(in srgb, var(--cc) 8%, transparent));
+          border:1.5px solid var(--cc); box-shadow:0 0 14px color-mix(in srgb, var(--cc) 45%, transparent), inset 0 0 10px color-mix(in srgb, var(--cc) 25%, transparent); }
+  .chip:nth-child(even) { --cc:var(--chipB); }
+  .chip svg { width:24px; height:24px; fill:currentColor; }
+
+  .foot { display:flex; align-items:center; gap:10px; background:rgba(5,9,24,.55); border:1px solid rgba(160,175,230,.18);
+          border-radius:16px; padding:10px 12px; font-size:14px; font-weight:600; color:#c9d2f2; }
+  .foot .ico { font-size:18px; flex:none; }
+  .foot .txt { flex:1; }
+  .bars { display:flex; align-items:flex-end; gap:3px; height:18px; flex:none; }
+  .bars i { width:4px; border-radius:2px; background:rgba(160,175,230,.25); }
+  .bars i:nth-child(1){height:6px} .bars i:nth-child(2){height:11px} .bars i:nth-child(3){height:16px}
+  .bars.live i { background:var(--ok); box-shadow:0 0 6px var(--ok); }
+  .bars.sched i:nth-child(1) { background:var(--muted); }
+  .late { color:var(--late); } .early { color:var(--warn); } .ontime { color:var(--ok); }
+
+  .more { display:block; width:100%; margin-top:10px; padding:10px; border-radius:14px; cursor:pointer;
+          border:1px solid rgba(var(--rgb),.35); background:rgba(var(--rgb),.07); color:var(--c1);
+          font:inherit; font-weight:800; font-size:14px; letter-spacing:.3px; }
+  .list { list-style:none; margin:10px 0 0; padding:0; display:none; }
+  .card.open .list { display:block; }
+  .list li { display:grid; grid-template-columns:auto 1fr auto; gap:2px 10px; align-items:center;
+             padding:10px 4px; border-top:1px solid rgba(160,175,230,.14); }
+  .list .ln { grid-row:span 2; min-width:48px; text-align:center; padding:6px 8px; border-radius:10px; font-weight:800;
+              color:var(--c1); border:1px solid rgba(var(--rgb),.5); background:rgba(var(--rgb),.1); }
+  .list .t { font-size:19px; font-weight:800; }
+  .list .in { font-size:17px; font-weight:800; text-align:right; }
+  .list .sub { grid-column:2 / 4; font-size:12.5px; color:var(--muted); }
+  .list li.cancelled { opacity:.5; } .list li.cancelled .t { text-decoration:line-through; }
+  .list .empty { color:var(--muted); text-align:center; padding:12px; border:0; display:block; }
+
+  .banner { display:none; margin:0 0 14px; padding:10px 14px; border-radius:14px; font-size:14px; font-weight:600;
+            background:rgba(255,198,92,.12); border:1px solid rgba(255,198,92,.5); color:#ffd890; }
+  .status { display:flex; align-items:center; justify-content:space-between; gap:10px; color:var(--muted); font-size:13px; margin:4px 2px 10px; }
+  .status button { border:1px solid rgba(120,140,220,.35); background:rgba(16,24,52,.7); color:var(--text);
+                   border-radius:12px; padding:8px 14px; font:inherit; font-size:14px; font-weight:700; cursor:pointer; }
+  footer { font-size:12px; color:#6f7aa0; line-height:1.6; margin:4px 2px 0; }
+  footer a { color:#8e9ac4; }
+
+  @media (prefers-reduced-motion: reduce) { .path .dash, .radar .sweep { animation:none; } }
+</style>
+</head>
+<body>
+<main>
+  <div class="top">
+    <h1>Куда едем сегодня?</h1>
+    <button class="radar" id="radar" type="button" aria-label="Обновить"><span class="sweep"></span></button>
+  </div>
+
+  <div class="work">
+    <span>Работа</span>
+    <div class="seg" id="seg"></div>
+  </div>
+
+  <div class="banner" id="banner"></div>
+  <div id="cards"></div>
+
+  <div class="status">
+    <span id="status">Загрузка…</span>
+    <button id="refresh" type="button">↻ Обновить</button>
+  </div>
+  <footer>
+    Данные: <a href="https://transitous.org/sources/" target="_blank" rel="noopener">Transitous</a>
+    (расписание и реальное время DELFI / AVV). Время немецкое.<br>
+    Полоски <span class="ontime">▮▮▮</span> — данные реального времени, серые — только расписание.
+  </footer>
+</main>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-home" viewBox="0 0 24 24"><path d="M12 3.2 2.5 11.1a1 1 0 0 0 1.3 1.5l.7-.6V20a1 1 0 0 0 1 1h4.5v-5.5h4V21H18.5a1 1 0 0 0 1-1v-8l.7.6a1 1 0 0 0 1.3-1.5L12 3.2z"/></symbol>
+  <symbol id="i-work" viewBox="0 0 24 24"><path d="M5 2h10a1 1 0 0 1 1 1v6h3a1 1 0 0 1 1 1v12H4V3a1 1 0 0 1 1-1zm2 3v2h2V5H7zm4 0v2h2V5h-2zM7 9v2h2V9H7zm4 0v2h2V9h-2zm-4 4v2h2v-2H7zm4 0v2h2v-2h-2zm6-2v2h2v-2h-2zm0 4v2h2v-2h-2zM9 18v4h3v-4H9z"/></symbol>
+  <symbol id="i-bus" viewBox="0 0 24 24"><path d="M6 2h12a3 3 0 0 1 3 3v11a2 2 0 0 1-1 1.7V20a1 1 0 0 1-1 1h-1a1 1 0 0 1-1-1v-1H7v1a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-2.3A2 2 0 0 1 3 16V5a3 3 0 0 1 3-3zm-.5 4v5h13V6h-13zM7 13.5a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3zm10 0a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3z"/></symbol>
+</svg>
+
+<script>
+"use strict";
+
+// ===== Остановки =====
+// match — имя остановки обязано подходить под это правило
+// (так "Schanz (Jakobstraße)" не перепутается с "Schanz (Vaalser Straße)").
+const STOPS = {
+  schanz:      { name: "Schanz",      full: "Schanz (Jakobstraße)", query: "Schanz (Jakobstraße) Aachen", match: /schanz.*jakob/i },
+  bushof:      { name: "Bushof",      full: "Bushof",               query: "Bushof Aachen",               match: /bushof/i },
+  kaiserplatz: { name: "Kaiserplatz", full: "Kaiserplatz",          query: "Kaiserplatz Aachen",          match: /kaiserplatz/i },
+};
+const HOME = "schanz";
+const WORKS = ["bushof", "kaiserplatz"];
+
+const API = "https://api.transitous.org";
+const VERSIONS = ["v6", "v5", "v4", "v3", "v2", "v1"]; // версия API: пробуем по очереди, рабочую запоминаем
+const AACHEN = "50.7753,6.0839";
+const TZ = "Europe/Berlin";
+const REFRESH_MS = 60_000;          // автообновление раз в минуту
+const AUTO_REFRESH_LIMIT_MS = 20 * 60_000; // после 20 мин без касаний — пауза (бережём бесплатный сервер)
+const TIMEOUT_MS = 12_000;
+const STOP_CACHE_DAYS = 14;
+const WINDOW_MIN = 45;              // показываем отправления на ближайшие 45 мин (минимум 30 рейсов с остановки)
+
+// ===== Безопасный localStorage =====
+const store = {
+  get(k) { try { return JSON.parse(localStorage.getItem(k)); } catch { return null; } },
+  set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} },
+  del(k) { try { localStorage.removeItem(k); } catch {} },
+};
+
+// ===== Сеть =====
+// Ошибки помечаются: network — нет связи/таймаут; status — HTTP-код; apiError — сервер ответил осмысленной ошибкой.
+async function getJSON(url) {
+  let lastErr;
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const ctrl = new AbortController();
+    const t = setTimeout(() => ctrl.abort(), TIMEOUT_MS);
+    let r;
+    try {
+      r = await fetch(url, { signal: ctrl.signal, cache: "no-store" });
+    } catch (e) {
+      lastErr = Object.assign(new Error("network: " + e.message), { network: true });
+      clearTimeout(t);
+      if (attempt === 0) await new Promise(res => setTimeout(res, 1500));
+      continue;
+    }
+    clearTimeout(t);
+    if (r.ok) return await r.json();
+    const err = new Error("HTTP " + r.status);
+    err.status = r.status;
+    try { const body = await r.json(); if (body && body.error) { err.apiError = true; err.message += ": " + body.error; } } catch {}
+    if (r.status < 500) throw err;              // 4xx не повторяем
+    lastErr = err;
+    if (attempt === 0) await new Promise(res => setTimeout(res, 1500));
+  }
+  throw lastErr;
+}
+
+async function apiGet(endpoint, params) {
+  const vk = "ver:" + endpoint;
+  const known = store.get(vk);
+  const order = known ? [known, ...VERSIONS.filter(v => v !== known)] : VERSIONS;
+  let lastErr;
+  for (const v of order) {
+    try {
+      const data = await getJSON(`${API}/api/${v}/${endpoint}?${params}`);
+      if (v !== known) store.set(vk, v);
+      return data;
+    } catch (e) {
+      lastErr = e;
+      if (!(e.status === 404 && !e.apiError)) break;   // другая версия поможет только при «нет такого адреса»
+    }
+  }
+  throw lastErr;
+}
+
+// ===== Поиск ID остановки (с кэшем) =====
+async function resolveStop(key, force) {
+  const ck = "stop3:" + key;
+  const cached = store.get(ck);
+  if (!force && cached && Date.now() - cached.t < STOP_CACHE_DAYS * 864e5) return cached.id;
+  const s = STOPS[key];
+  const url = `${API}/api/v1/geocode?type=STOP&numResults=20&place=${AACHEN}&text=${encodeURIComponent(s.query)}`;
+  const res = await getJSON(url);
+  // город именно Аахен (не Eschweiler, не Düren), немецкие данные (de-…) раньше бельгийских/нидерландских
+  const inAachen = m => (m.areas || []).some(a => /^aachen$/i.test(a.name));
+  const cands = (res || []).filter(m => s.match.test(m.name) && inAachen(m));
+  const hit = cands.find(m => /^de-/.test(m.id)) || cands[0];
+  if (!hit) throw new Error(`Остановка «${s.name}» не найдена`);
+  store.set(ck, { id: hit.id, name: hit.name, t: Date.now() });
+  return hit.id;
+}
+
+// ===== Способ 1 (основной): табло отправлений + следующие остановки каждого рейса =====
+// Один запрос. Рейс берём, только если он после нашей остановки доезжает до остановки назначения.
+async function boardTrips(fromId, fromKey, toKey, time) {
+  const params = new URLSearchParams({
+    stopId: fromId, time, n: "30", window: String(WINDOW_MIN * 60), mode: "BUS", fetchStops: "true",
+  });
+  const data = await apiGet("stoptimes", params);
+  const list = (data && data.stopTimes) || [];
+  if (list.length && !list.some(x => Array.isArray(x.nextStops))) {
+    throw Object.assign(new Error("сервер не вернул следующие остановки"), { noStops: true });
+  }
+  const out = [];
+  for (const x of list) {
+    const p = x.place || {};
+    if (!STOPS[fromKey].match.test(p.name || "")) continue;     // только наша остановка
+    if (x.pickupDropoffType === "NOT_ALLOWED") continue;          // посадки нет
+    const d = (x.nextStops || []).find(n => STOPS[toKey].match.test(n.name || ""));
+    if (!d || !p.departure) continue;                             // не доезжает
+    out.push({
+      key: (x.routeShortName || "") + "|" + (p.scheduledDeparture || p.departure),
+      line: x.routeShortName || x.displayName || "Bus",
+      dep: p.departure, depSched: p.scheduledDeparture || p.departure,
+      arr: d.arrival || d.departure,
+      realTime: !!x.realTime,
+      cancelled: !!(x.cancelled || x.tripCancelled || d.cancelled),
+      headsign: x.headsign || "",
+      track: p.track || p.scheduledTrack || "",
+    });
+  }
+  return finalize(out);
+}
+
+// ===== Способ 2 (запасной): поиск маршрутов, только прямые автобусы =====
+async function planTrips(fromKey, toKey, time) {
+  const [fromId, toId] = await Promise.all([resolveStop(fromKey, false), resolveStop(toKey, false)]);
+  const params = new URLSearchParams({
+    fromPlace: fromId, toPlace: toId, time,
+    maxTransfers: "0", transitModes: "BUS", searchWindow: String(WINDOW_MIN * 60), numItineraries: "10",
+  });
+  const data = await apiGet("plan", params);
+  const out = [];
+  for (const it of (data && data.itineraries) || []) {
+    const tl = (it.legs || []).filter(l => l.mode !== "WALK");
+    if (tl.length !== 1) continue;
+    const l = tl[0];
+    if (!STOPS[fromKey].match.test(l.from && l.from.name || "")) continue;
+    if (!STOPS[toKey].match.test(l.to && l.to.name || "")) continue;
+    out.push({
+      key: (l.routeShortName || "") + "|" + l.scheduledStartTime,
+      line: l.routeShortName || l.displayName || "Bus",
+      dep: l.startTime, depSched: l.scheduledStartTime, arr: l.endTime,
+      realTime: !!l.realTime, cancelled: !!l.cancelled,
+      headsign: l.headsign || "", track: (l.from && (l.from.track || l.from.scheduledTrack)) || "",
+    });
+  }
+  return finalize(out);
+}
+
+// Дубликаты (один рейс в нескольких наборах данных) убираем; рейсы «в обход по кольцу»
+// (едут намного дольше самого быстрого) не показываем; сортируем по отправлению.
+function finalize(out) {
+  const seen = new Set();
+  let uniq = out.filter(t => t.dep && t.arr && !seen.has(t.key) && seen.add(t.key));
+  // один и тот же автобус, проходящий две платформы нашей остановки (одна линия, одно время прибытия):
+  // оставляем более позднее отправление
+  const byArr = new Map();
+  for (const t of uniq) {
+    const k = t.line + "|" + t.arr;
+    const prev = byArr.get(k);
+    if (!prev || new Date(t.dep) > new Date(prev.dep)) byArr.set(k, t);
+  }
+  uniq = [...byArr.values()];
+  const ride = t => (new Date(t.arr) - new Date(t.dep)) / 60000;
+  const rides = uniq.filter(t => !t.cancelled).map(ride).filter(m => m > 0);
+  const min = rides.length ? Math.min(...rides) : 0;
+  const limit = Math.max(2 * min, min + 8);
+  return uniq.filter(t => !min || ride(t) <= limit)
+             .sort((a, b) => new Date(a.dep) - new Date(b.dep));
+}
+
+
+// ===== Отображение =====
+const $ = id => document.getElementById(id);
+const fmt = new Intl.DateTimeFormat("de-DE", { hour: "2-digit", minute: "2-digit", timeZone: TZ });
+const fmtS = new Intl.DateTimeFormat("de-DE", { hour: "2-digit", minute: "2-digit", second: "2-digit", timeZone: TZ });
+const hm = iso => fmt.format(new Date(iso));
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const minsTo = (iso, now) => Math.floor((new Date(iso).getTime() - now) / 60000);  // округляем вниз — не опоздать
+
+let work = WORKS.includes(store.get("work")) ? store.get("work") : WORKS[0];
+const state = {};                     // по ключу "from>to": { trips, at }
+const inflight = {};
+const open = {};                      // раскрыт ли список
+let lastTouch = Date.now();
+let lastError = null;
+
+const dirs = () => [
+  { cls: "",     label: "Дом → Работа", from: HOME, to: work, ico: ["i-home", "i-work"], footIco: "⚡" },
+  { cls: "back", label: "Работа → Дом", from: work, to: HOME, ico: ["i-work", "i-home"], footIco: "🕒" },
+];
+const keyOf = d => d.from + ">" + d.to;
+
+function renderSeg() {
+  $("seg").innerHTML = WORKS.map(w =>
+    `<button type="button" data-w="${w}" class="${w === work ? "on" : ""}">${STOPS[w].name}</button>`).join("");
+}
+
+function pathSvg(back) {
+  // волнистая светящаяся линия со стрелкой; у «обратной» — изгиб в другую сторону
+  const d = back ? "M6 22 C40 22 50 42 90 40 S150 18 196 30" : "M6 34 C46 34 56 14 96 20 S150 44 196 28";
+  return `<svg class="path" viewBox="0 0 210 60" preserveAspectRatio="none" aria-hidden="true">
+    <path class="glow" d="${d}"/><path class="dash" d="${d}"/>
+    <path class="head" d="${back ? "M196 30 l-10 -7 l2 7 l-2 7z" : "M196 28 l-10 -7 l2 7 l-2 7z"}"/></svg>`;
+}
+
+function statusOf(t) {
+  if (t.cancelled) return { cls: "late", txt: "рейс отменён" };
+  if (!t.realTime) return { cls: "", txt: "по расписанию" };
+  const delay = Math.round((new Date(t.dep) - new Date(t.depSched)) / 60000);
+  if (delay > 0) return { cls: "late", txt: `опоздание +${delay} мин` };
+  if (delay < 0) return { cls: "early", txt: `раньше на ${-delay} мин` };
+  return { cls: "ontime", txt: "вовремя" };
+}
+
+function cardHtml(d) {
+  const k = keyOf(d), st = state[k], now = Date.now();
+  const trips = st ? st.trips.filter(t => new Date(t.dep).getTime() > now - 30_000) : [];
+  const active = trips.filter(t => !t.cancelled);
+  const n0 = active[0], n1 = active[1];
+
+  let big, bigCls = "", pill, chips = "", foot;
+  if (!st) {
+    big = "…"; pill = "Загрузка расписания"; foot = `<span class="txt">Получаю данные…</span>`;
+  } else if (!n0) {
+    big = "Нет рейсов"; bigCls = "small";
+    pill = `Прямых автобусов в ближайшие ${WINDOW_MIN} мин нет`;
+    foot = `<span class="txt">Нажмите «Обновить» позже</span>`;
+  } else {
+    const m = minsTo(n0.dep, now);
+    big = m <= 0 ? "Сейчас" : `Через ${m} мин`;
+    pill = `<span>Ближайший — <b>${hm(n0.dep)}</b></span>` + (n1 ? `<span>• Следующий — <b>${hm(n1.dep)}</b></span>` : "");
+    const lines = [...new Set(active.slice(0, 3).map(t => t.line))].slice(0, 3);
+    chips = lines.map(l => `<span class="chip"><svg><use href="#i-bus"/></svg>№ ${esc(l)}</span>`).join("");
+    const s = statusOf(n0);
+    const ride = Math.round((new Date(n0.arr) - new Date(n0.dep)) / 60000);
+    foot = `<span class="ico">${d.footIco}</span>
+      <span class="txt"><span class="nw">В пути ~${ride} мин</span> • <span class="nw ${s.cls}">${s.txt}</span>${n0.track ? `<br><small>стоянка ${esc(n0.track)}</small>` : ""}</span>
+      <span class="bars ${n0.realTime ? "live" : "sched"}" title="${n0.realTime ? "реальное время" : "только расписание"}"><i></i><i></i><i></i></span>`;
+  }
+
+  const rows = trips.length ? trips.map(t => {
+    const m = minsTo(t.dep, now), s = statusOf(t);
+    return `<li class="${t.cancelled ? "cancelled" : ""}">
+      <span class="ln">${esc(t.line)}</span>
+      <span class="t">${hm(t.dep)}</span>
+      <span class="in">${t.cancelled ? "отмена" : m <= 0 ? "сейчас" : m + " мин"}</span>
+      <span class="sub"><span class="${s.cls}">● ${s.txt}</span>${s.cls === "late" && !t.cancelled ? ` (план ${hm(t.depSched)})` : ""} · прибытие ${hm(t.arr)}${t.headsign ? " · → " + esc(t.headsign) : ""}${t.track ? " · стоянка " + esc(t.track) : ""}</span>
+    </li>`;
+  }).join("") : `<li class="empty">Нет данных</li>`;
+
+  return `<section class="card ${d.cls}${open[k] ? " open" : ""}" data-k="${k}">
+    <h2 class="label">${d.label}</h2>
+    <div class="stops">${STOPS[d.from].full} → ${STOPS[d.to].full}</div>
+    <div class="route">
+      <div class="node"><svg><use href="#${d.ico[0]}"/></svg></div>
+      ${pathSvg(!!d.cls)}
+      <div class="node"><svg><use href="#${d.ico[1]}"/></svg></div>
+    </div>
+    <div class="big ${bigCls}">${big}</div>
+    <div class="pill">${pill}</div>
+    ${chips ? `<div class="chips">${chips}</div>` : ""}
+    <div class="foot">${foot}</div>
+    <button class="more" type="button" data-k="${k}">${open[k] ? "Скрыть ▴" : `Все рейсы${trips.length ? " (" + trips.length + ")" : ""} ▾`}</button>
+    <ul class="list">${rows}</ul>
+  </section>`;
+}
+
+function render() {
+  $("cards").innerHTML = dirs().map(cardHtml).join("");
+  const ats = dirs().map(d => state[keyOf(d)] && state[keyOf(d)].at).filter(Boolean);
+  const paused = Date.now() - lastTouch > AUTO_REFRESH_LIMIT_MS;
+  $("status").textContent = ats.length
+    ? `Обновлено ${fmtS.format(new Date(Math.min(...ats)))}${paused ? " · автообновление на паузе" : ""}`
+    : (Object.keys(inflight).length ? "Загрузка…" : "Нет данных");
+  $("radar").classList.toggle("busy", Object.keys(inflight).length > 0);
+  $("radar").classList.toggle("offline", !!lastError);
+}
+
+function setBanner(text) { const b = $("banner"); b.textContent = text || ""; b.style.display = text ? "block" : "none"; }
+
+function load(k) {
+  if (!inflight[k]) {
+    inflight[k] = doLoad(k).finally(() => { delete inflight[k]; render(); });
+    render();
+  }
+  return inflight[k];
+}
+
+async function doLoad(k) {
+  const [a, b] = k.split(">");
+  try {
+    const time = new Date(Date.now() - 60_000).toISOString();
+    let trips;
+    try {
+      trips = await boardTrips(await resolveStop(a, false), a, b, time);
+    } catch (e1) {
+      if (e1.network) throw e1;                      // нет связи — сразу показываем сохранённое
+      console.warn("способ 1:", e1);
+      try {                                          // возможно, ID остановки поменялся — ищем заново
+        trips = await boardTrips(await resolveStop(a, true), a, b, time);
+      } catch (e2) {
+        if (e2.network) throw e2;
+        console.warn("способ 1, повтор:", e2);
+        trips = await planTrips(a, b, time);         // запасной способ
+      }
+    }
+    state[k] = { trips, at: Date.now() };
+    store.set("cache3:" + k, state[k]);
+    lastError = null; setBanner("");
+  } catch (e) {
+    console.error(e);
+    lastError = e;
+    const cached = state[k] || store.get("cache3:" + k);
+    if (cached) {
+      state[k] = cached;
+      setBanner(`Нет связи с сервером данных. Показаны данные от ${fmt.format(new Date(cached.at))} — время могло измениться.`);
+    } else {
+      state[k] = { trips: [], at: 0 };
+      setBanner("Не удалось загрузить данные. Проверьте интернет и нажмите «Обновить».");
+    }
+  }
+}
+
+function loadAll() { dirs().forEach(d => load(keyOf(d))); }
+
+function touchAndLoad() { lastTouch = Date.now(); loadAll(); }
+
+// ===== События =====
+$("seg").addEventListener("click", e => {
+  const b = e.target.closest("button[data-w]"); if (!b || b.dataset.w === work) return;
+  work = b.dataset.w; store.set("work", work); lastTouch = Date.now();
+  dirs().forEach(d => { const k = keyOf(d); if (!state[k]) { const c = store.get("cache3:" + k); if (c) state[k] = c; } });
+  renderSeg(); render(); loadAll();
+});
+$("cards").addEventListener("click", e => {
+  const b = e.target.closest(".more"); if (!b) return;
+  open[b.dataset.k] = !open[b.dataset.k]; lastTouch = Date.now(); render();
+});
+$("refresh").addEventListener("click", touchAndLoad);
+$("radar").addEventListener("click", touchAndLoad);
+document.addEventListener("visibilitychange", () => { if (!document.hidden) touchAndLoad(); });
+
+setInterval(() => {
+  if (document.hidden) return;
+  const fresh = Date.now() - lastTouch < AUTO_REFRESH_LIMIT_MS;
+  dirs().forEach(d => {
+    const st = state[keyOf(d)];
+    if (fresh && (!st || Date.now() - st.at >= REFRESH_MS)) load(keyOf(d));
+  });
+  render();                                         // пересчёт «через N мин»
+}, 10_000);
+
+// старт: сразу показать сохранённое, потом загрузить свежее
+dirs().forEach(d => { const k = keyOf(d); const c = store.get("cache3:" + k); if (c) state[k] = c; });
+renderSeg(); render(); loadAll();
+</script>
+</body>
+</html>
