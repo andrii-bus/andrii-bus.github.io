@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#0e0e10">
-<meta name="app-version" content="bus-v19">
+<meta name="app-version" content="bus-v20">
 <title>LA Bus</title>
 <link rel="manifest" href="manifest.json">
 <meta name="mobile-web-app-capable" content="yes">
@@ -588,14 +588,29 @@ $("seg").addEventListener("click", e => {
   const b = e.target.closest("button[data-w]"); if (!b || b.dataset.w === work) return;
   work = b.dataset.w; store.set("work", work); lastTouch = Date.now();
   dirs().forEach(d => { const k = keyOf(d); if (!state[k]) { const c = store.get("cache3:" + k); if (c) state[k] = c; } });
-  sheetKey = null; renderSeg(); render(); loadAll();
+  closeSheet(); renderSeg(); render(); loadAll();
 });
 $("cards").addEventListener("click", e => {
   const b = e.target.closest(".more"); if (!b) return;
-  sheetKey = b.dataset.k; lastTouch = Date.now(); renderSheet();
+  lastTouch = Date.now(); openSheet(b.dataset.k);
 });
-$("sheet").addEventListener("click", e => { if (e.target.closest("[data-close]") || e.target === $("sheet")) { sheetKey = null; renderSheet(); } });
-document.addEventListener("keydown", e => { if (e.key === "Escape" && sheetKey) { sheetKey = null; renderSheet(); } });
+$("sheet").addEventListener("click", e => { if (e.target.closest("[data-close]") || e.target === $("sheet")) closeSheet(); });
+document.addEventListener("keydown", e => { if (e.key === "Escape") closeSheet(); });
+
+// Панель «Все рейсы» — это шаг в истории браузера: жест/кнопка «Назад» на Android закрывает её, а не приложение.
+function openSheet(k) {
+  const wasOpen = !!sheetKey;
+  sheetKey = k; renderSheet();
+  if (!wasOpen) { try { history.pushState({ sheet: true }, ""); } catch {} }
+}
+function closeSheet(fromBack) {
+  if (!sheetKey) return;
+  sheetKey = null; renderSheet();
+  if (!fromBack && history.state && history.state.sheet) { try { history.back(); } catch {} }
+}
+addEventListener("popstate", () => { if (sheetKey) closeSheet(true); });
+// если страницу перезагрузили с открытой панелью в истории — начинаем с чистого состояния
+if (history.state && history.state.sheet) { try { history.replaceState(null, ""); } catch {} }
 $("fab").addEventListener("click", touchAndLoad);
 document.addEventListener("visibilitychange", () => { if (!document.hidden) touchAndLoad(); });
 
