@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#0e0e10">
-<meta name="app-version" content="bus-v20">
+<meta name="app-version" content="bus-v21">
 <title>LA Bus</title>
 <link rel="manifest" href="manifest.json">
 <meta name="mobile-web-app-capable" content="yes">
@@ -16,7 +16,7 @@
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@600;700;800&family=Rubik:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
   :root {
     --bg:#0e0e10; --text:#f4f4f6; --muted:#8d8d96; --line:#2a2a2f;
@@ -60,12 +60,12 @@
           display:flex; flex-direction:column; justify-content:space-between; gap:6px;
           background:linear-gradient(180deg, #c4d0f8 0%, #b6c4f4 55%, #adbcf0 100%); color:var(--peri-ink); border:1.5px solid transparent;
           box-shadow:0 12px 26px -12px rgba(0,0,0,.75), inset 0 1px 0 rgba(255,255,255,.6), inset 0 -2px 0 rgba(20,30,90,.08); }
-  .card.back { background:linear-gradient(180deg, #2d2c32 0%, #26252a 60%, #222126 100%); color:var(--text); border-color:#3d3742;
+  .card.back { background:linear-gradient(180deg, #45444d 0%, #3c3b44 60%, #36353e 100%); color:var(--text); border-color:#55505e;
                box-shadow:0 12px 26px -12px rgba(0,0,0,.85), inset 0 1px 0 rgba(255,255,255,.07); }
   .row1 { display:flex; align-items:center; gap:8px; }
   .tag { background:linear-gradient(180deg, #2a2a2e, #0f0f11); color:#fff; border-radius:999px; padding:6px 13px; font-size:15px; font-weight:500; white-space:nowrap;
          box-shadow:0 3px 8px rgba(0,0,0,.28), inset 0 1px 0 rgba(255,255,255,.14); }
-  .card.back .tag { background:linear-gradient(180deg, #46464e, #37373e); color:#e6e6ea; box-shadow:0 3px 8px rgba(0,0,0,.35), inset 0 1px 0 rgba(255,255,255,.1); }
+  .card.back .tag { background:linear-gradient(180deg, #5a5963, #4b4a54); color:#e6e6ea; box-shadow:0 3px 8px rgba(0,0,0,.35), inset 0 1px 0 rgba(255,255,255,.1); }
   .route-s { flex:1; min-width:0; font-size:15px; color:#3346a8; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   .card.back .route-s { color:#9d9da6; }
   .circle { width:34px; height:34px; border-radius:50%; border:0; background:linear-gradient(180deg, #fff, #eceef6); color:#111; display:grid; place-items:center; flex:none;
@@ -73,8 +73,9 @@
   .card.back .circle { background:linear-gradient(180deg, #232326, #0e0e10); color:#fff; box-shadow:0 3px 8px rgba(0,0,0,.4), inset 0 1px 0 rgba(255,255,255,.1); }
   .circle svg { width:18px; height:18px; fill:none; stroke:currentColor; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; }
 
-  .big { font-family:Rubik, system-ui, sans-serif; font-weight:700; letter-spacing:-.5px; line-height:1.05; white-space:nowrap;
+  .big { font-family:Nunito, Rubik, system-ui, sans-serif; font-weight:800; letter-spacing:-.4px; line-height:1.05; white-space:nowrap;
          font-size:calc(clamp(30px, min(12.2vw, 7vh), 64px) * var(--k, 1)); }
+  .big .w { font-weight:600; opacity:.78; }
   .meta { display:flex; align-items:center; gap:7px; font-size:calc(clamp(15px, min(4.6vw, 2.5vh), 21px) * var(--k, 1)); flex-wrap:wrap; row-gap:2px; }
   .meta svg { width:1em; height:1em; fill:none; stroke:currentColor; stroke-width:1.8; flex:none; }
   .meta .sep { opacity:.45; }
@@ -428,6 +429,10 @@ function statusOf(t) {
   return { cls: "ontime", txt: "вовремя" };
 }
 
+// 1 минута, 2 минуты, 5 минут, 21 минута, 12 минут
+const minWord = n => (n % 10 === 1 && n % 100 !== 11) ? "минута"
+  : (n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 10 || n % 100 >= 20)) ? "минуты" : "минут";
+
 function cardHtml(d) {
   const k = keyOf(d), st = state[k], now = Date.now();
   const trips = st ? st.trips.filter(t => new Date(t.dep).getTime() > now - 30_000) : [];
@@ -440,7 +445,7 @@ function cardHtml(d) {
     big = "Нет рейсов"; meta = `<span class="muted">Прямых автобусов в ближайшие ${WINDOW_MIN} мин нет</span>`;
   } else {
     const m = minsTo(n0.dep, now), s = statusOf(n0);
-    big = m <= 0 ? "Сейчас" : `Через ${m} мин`;
+    big = m <= 0 ? "Сейчас" : `<span class="w">Ожидание</span> ${m} ${minWord(m)}`;
     meta = `${ICON.clock}<span>${hm(n0.dep)}</span>${badge(n0)}` +
            (n1 ? `<span class="sep">·</span><span>далее ${hm(n1.dep)}</span>` : "");
     const lines = [...new Set(active.slice(0, 3).map(t => t.line))].slice(0, 3);
@@ -522,10 +527,17 @@ function fit() {
   main.style.height = vh + "px";
   const over = () => main.scrollHeight > main.clientHeight + 1 || main.getBoundingClientRect().bottom > vh + 1 ||
     [...document.querySelectorAll(".card")].some(c => c.scrollHeight > c.clientHeight + 1) ||
-    [...document.querySelectorAll(".big, .row3, .row1")].some(e => e.scrollWidth > e.clientWidth + 1);
+    [...document.querySelectorAll(".row3, .row1")].some(e => e.scrollWidth > e.clientWidth + 1);
+  const bigs = [...document.querySelectorAll(".big")];
+  bigs.forEach(b => { b.style.fontSize = ""; });
   let k = 1;
   root.style.setProperty("--k", k);
   while (over() && k > 0.5) { k = Math.round((k - 0.03) * 100) / 100; root.style.setProperty("--k", k); }
+  // главная надпись («Ожидание 13 минут») сама уменьшается под ширину своей карточки
+  bigs.forEach(b => {
+    let fs = parseFloat(getComputedStyle(b).fontSize);
+    while (b.scrollWidth > b.clientWidth + 1 && fs > 16) { fs -= 1; b.style.fontSize = fs + "px"; }
+  });
 }
 let fitTimer;
 const refit = () => { clearTimeout(fitTimer); fitTimer = setTimeout(fit, 80); };
