@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#0e0e10">
-<meta name="app-version" content="bus-v16">
+<meta name="app-version" content="bus-v17">
 <title>LA Bus</title>
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="icon-192.png" type="image/png">
@@ -33,18 +33,20 @@
   /* ===== шапка ===== */
   .top { display:flex; align-items:center; gap:10px; flex:none; }
   h1 { margin:0; font-weight:400; letter-spacing:-.6px; line-height:1.05; font-size:clamp(30px, min(10vw, 5.4vh), 46px); }
-  .avatar { width:52px; height:52px; border-radius:50%; flex:none; border:2px solid #3a3a40; overflow:hidden; background:#000; }
+  .avatar { width:44px; height:44px; border-radius:50%; flex:none; border:2px solid #3a3a40; overflow:hidden; background:#000; }
   .avatar img { width:100%; height:100%; display:block; object-fit:cover; }
 
   /* ===== выбор «работы» — как полоска дней ===== */
-  .work { flex:1; min-width:0; display:flex; align-items:center; gap:4px; background:#26262b; border-radius:999px; padding:5px; }
+  .work { flex:none; display:flex; align-items:center; gap:4px; background:#26262b; border-radius:999px; padding:5px; }
   .work .lbl { flex:.8; text-align:center; color:var(--muted); font-size:15px; font-weight:500; }
   .work button { flex:1; border:0; background:transparent; color:#c9c9d0; border-radius:999px;
-                 padding:clamp(9px, 1.4vh, 12px) 6px; font-size:16px; font-weight:500; white-space:nowrap; }
+                 padding:calc(clamp(11px, 1.7vh, 15px) * var(--k, 1)) 6px; font-size:17px; font-weight:500; white-space:nowrap; }
   .work button.on { background:#fff; color:#111; font-weight:600; }
 
   /* ===== карточки делят оставшуюся высоту поровну ===== */
   .cards { flex:1; min-height:0; display:flex; flex-direction:column; gap:var(--gap); }
+  .slot { flex:1; min-height:0; display:flex; }
+  .slot > .card { flex:1; }
   .card { flex:1; min-height:0; overflow:hidden; border-radius:22px; padding:calc(clamp(12px, 1.9vh, 20px) * var(--k, 1)) 16px;
           display:flex; flex-direction:column; justify-content:space-between; gap:6px;
           background:var(--peri); color:var(--peri-ink); border:1.5px solid transparent; }
@@ -87,7 +89,8 @@
   .card.back .stats .trk { background:#e4e7f6; color:#111; }
 
   /* ===== нижняя панель ===== */
-  .bar { flex:none; display:flex; align-items:center; justify-content:space-between; gap:12px; padding:0 4px; }
+  .bar { flex:none; display:flex; align-items:center; gap:10px; padding:0 2px; }
+  .bar .status { flex:1; }
   .status { font-size:12.5px; color:var(--muted); line-height:1.35; min-width:0; }
   .status.warn { color:var(--warn); }
   .status a { color:var(--muted); }
@@ -134,14 +137,14 @@
 </head>
 <body>
 <main>
-  <header class="top">
-    <div class="avatar"><img src="avatar.png" alt=""></div>
+  <div class="cards" id="cards">
+    <div class="slot" id="slot0"></div>
     <div class="work" id="seg"></div>
-  </header>
-
-  <div class="cards" id="cards"></div>
+    <div class="slot" id="slot1"></div>
+  </div>
 
   <div class="bar">
+    <div class="avatar"><img src="avatar.png" alt=""></div>
     <div class="status" id="status">Загрузка…</div>
     <button class="fab" id="fab" type="button" aria-label="Обновить"><svg viewBox="0 0 24 24"><path d="M20 12a8 8 0 1 1-2.34-5.66"/><path d="M20 4v5h-5"/></svg></button>
   </div>
@@ -473,7 +476,9 @@ function renderSheet() {
 }
 
 function render() {
-  $("cards").innerHTML = dirs().map(cardHtml).join("");
+  const ds = dirs();
+  $("slot0").innerHTML = cardHtml(ds[0]);
+  $("slot1").innerHTML = cardHtml(ds[1]);
   const ats = dirs().map(d => state[keyOf(d)] && state[keyOf(d)].at).filter(Boolean);
   const paused = Date.now() - lastTouch > AUTO_REFRESH_LIMIT_MS;
   const st = $("status");
