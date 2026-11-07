@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#0e0e10">
-<meta name="app-version" content="bus-v24">
+<meta name="app-version" content="bus-v25">
 <title>LA Bus</title>
 <link rel="manifest" href="manifest.json">
 <meta name="mobile-web-app-capable" content="yes">
@@ -89,12 +89,19 @@
   .card.back .rl { stroke:#e4e7f6; }
   .card.back .sd { fill:#3c3b44; stroke:#e4e7f6; } .card.back .sd.lit { fill:#ffd36b; }
   .rider { position:absolute; bottom:calc(100cqw * 9 / 320 - 3px); height:calc(100% - 100cqw * 9 / 320 + 6px);
-           transform:translateX(-88%); pointer-events:none; }
-  .rider img { height:100%; width:auto; display:block; transform-origin:30% 95%;
-               animation:ride .42s ease-in-out infinite alternate; filter:drop-shadow(0 2px 2px rgba(0,0,0,.18)); }
-  @keyframes ride { from { transform:translateY(0) rotate(-1.5deg); } to { transform:translateY(-2px) rotate(1.5deg); } }
+           transform:translateX(-84%); pointer-events:none; }
+  .rider svg.cat { height:100%; width:auto; aspect-ratio:210 / 190; display:block; overflow:visible; filter:drop-shadow(0 2px 2px rgba(0,0,0,.18)); }
+  .card.back .rider svg.cat { filter:drop-shadow(0 0 1.3px rgba(228,231,246,.95)) drop-shadow(0 2px 2px rgba(0,0,0,.3)); }
+  .cat .wheel { transform-box:fill-box; transform-origin:center; animation:wspin .45s linear infinite; }
+  .cat .catbody { animation:catbob .42s ease-in-out infinite alternate; }
+  .cat .tail { transform-box:view-box; transform-origin:58px 122px; animation:wag .9s ease-in-out infinite alternate; }
+  .cat .speed path { stroke-dasharray:10 6; animation:speed .35s linear infinite; }
+  @keyframes wspin { to { transform:rotate(360deg); } }
+  @keyframes catbob { from { transform:translateY(0); } to { transform:translateY(-3px); } }
+  @keyframes wag { from { transform:rotate(-7deg); } to { transform:rotate(9deg); } }
+  @keyframes speed { to { stroke-dashoffset:16; } }
   @media (max-height: 560px) { .anim { display:none; } }
-  @media (prefers-reduced-motion: reduce) { .rider img { animation:none; } }
+  @media (prefers-reduced-motion: reduce) { .cat .wheel, .cat .catbody, .cat .tail, .cat .speed path { animation:none; } }
   .meta { display:flex; align-items:center; gap:7px; font-size:calc(clamp(15px, min(4.6vw, 2.5vh), 21px) * var(--k, 1)); flex-wrap:wrap; row-gap:2px; }
   .meta svg { width:1em; height:1em; fill:none; stroke:currentColor; stroke-width:1.8; flex:none; }
   .meta .sep { opacity:.45; }
@@ -451,6 +458,9 @@ function statusOf(t) {
   return { cls: "ontime", txt: "вовремя" };
 }
 
+// Кот на самокате в профиль (векторный, части анимируются: колёса, хвост, туловище, линии скорости)
+const CAT_SVG = `<svg class="cat" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 210 190" fill="none" stroke="#15161c" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"> <g class="speed" stroke-width="2.4"> <path d="M4 132h18"/><path d="M0 146h14"/><path d="M8 160h16"/> </g> <path d="M44 155 H152" stroke-width="7"/> <path d="M44 155 H152" stroke="#fff" stroke-width="2.4"/> <path d="M26 163 A20 20 0 0 1 58 148" /> <path d="M150 155 L168 151 L176 167" /> <path d="M168 151 L170 64" stroke-width="5"/> <path d="M171 64 L156 61" stroke-width="7"/> <g class="tail"><path d="M58 122 C34 128 18 120 20 100 C21 88 30 84 34 92" stroke-width="9"/><path d="M58 122 C34 128 18 120 20 100 C21 88 30 84 34 92" stroke="#fff" stroke-width="3.2"/></g> <g class="catbody"> <path d="M60 58 C56 52 62 44 72 44 L92 46 C100 47 102 54 100 62 L94 100 C92 108 84 110 76 108 L62 104 C54 102 52 96 54 88 Z" fill="#fff"/> <path d="M58 70 C64 62 80 60 98 64" /> <ellipse cx="104" cy="110" rx="50" ry="42" fill="#fff"/> <path d="M60 104 C70 108 76 116 74 126" stroke-width="2.4"/> <path d="M98 66 C112 74 124 88 128 104" stroke-width="2.6"/> <path d="M78 140 C78 148 80 151 88 151 C94 151 96 148 95 143" fill="#fff"/> <path d="M104 146 C104 151 108 152 115 152 C121 152 122 148 120 144" fill="#fff"/> <g class="head" transform="translate(-10,-2)"> <path d="M106 38 L104 10 L126 26" fill="#fff"/> <path d="M140 26 L160 12 L158 40" fill="#fff"/> <path d="M109 30 L108 18 L118 25" stroke-width="2"/> <path d="M148 25 L156 19 L155 30" stroke-width="2"/> <circle cx="132" cy="54" r="30" fill="#fff"/> <path d="M114 50 C118 47 124 47 127 50" stroke-width="2.6"/> <path d="M137 50 C140 47 146 47 150 50" stroke-width="2.6"/> <path d="M117 51 C119 55 124 55 126 51 Z" fill="#15161c" stroke-width="1.6"/> <path d="M138 51 C140 55 145 55 147 51 Z" fill="#15161c" stroke-width="1.6"/> <path d="M113 45 L126 47" stroke-width="2.2"/><path d="M138 47 L151 45" stroke-width="2.2"/> <path d="M129 60 h6 l-3 3.5 z" fill="#15161c" stroke-width="1.6"/> <path d="M132 63.5 v3 M126 70 C129 66 135 66 138 70" stroke-width="2"/> <path d="M118 63 L100 60 M118 66 L101 68 M146 63 L164 60 M146 66 L163 68" stroke-width="1.4"/> </g> <path d="M104 78 C112 84 130 84 140 76" stroke-width="2.6"/> <rect x="117" y="83" width="10" height="11" rx="2" fill="#fff" stroke-width="2"/> <path d="M119.5 86h2M123 86h1.5M119.5 89.5h1.5M122.5 89.5h2.5" stroke-width="1.3"/> <path d="M132 98 C146 90 153 78 157 66" stroke-width="15"/> <path d="M132 98 C146 90 153 78 157 66" stroke="#fff" stroke-width="8.6"/> <ellipse cx="158" cy="63" rx="7.5" ry="6.5" fill="#fff"/> <path d="M155 60v5M159 59.5v6" stroke-width="1.6"/> </g> <g class="wheel wr"><circle cx="42" cy="170" r="14" fill="#fff"/><circle cx="42" cy="170" r="4.5"/><path d="M42 158v5M42 177v5M30 170h5M49 170h5" stroke-width="2"/></g> <g class="wheel wf"><circle cx="176" cy="170" r="14" fill="#fff"/><circle cx="176" cy="170" r="4.5"/><path d="M176 158v5M176 177v5M164 170h5M183 170h5" stroke-width="2"/></g> </svg>`;
+
 // Схема линии: точки = настоящие промежуточные остановки ближайшего рейса (не больше 8 на экране).
 // По линии едет кот на самокате и «зажигает» пройденные остановки.
 const RX0 = 10, RX1 = 310, RY = 9;
@@ -462,7 +472,7 @@ function routeSvg(via, phase) {
       <line class="rl" x1="${RX0}" y1="${RY}" x2="${RX1}" y2="${RY}"/>
       ${xs.map((x, i) => `<circle class="sd" cx="${x}" cy="${RY}" r="${i === 0 || i === xs.length - 1 ? 6 : 4}"/>`).join("")}
     </svg>
-    <span class="rider"><img src="cat.png" alt="" draggable="false"></span>
+    <span class="rider">${CAT_SVG}</span>
   </div>`;
 }
 const RM = window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -472,9 +482,9 @@ function animRoutes(now) {
     const p = (((now + ph) % 8000) + 8000) % 8000 / 8000;
     const e = p < .85 ? p / .85 : 1;
     const f = RM ? .5 : (e < .5 ? 2 * e * e : 1 - Math.pow(-2 * e + 2, 2) / 2);
-    // точку на линии отмечает переднее колесо самоката (88% ширины картинки) — кот всегда целиком в карточке
+    // точку на линии отмечает переднее колесо самоката (84% ширины рисунка) — кот всегда целиком в карточке
     const W = el.clientWidth, rider = el.querySelector(".rider"), cw = rider.offsetWidth || 0;
-    const from = cw * 0.88, to = W * RX1 / 320;
+    const from = cw * 0.84, to = W * RX1 / 320;
     const xp = from + Math.max(to - from, 0) * f;
     rider.style.left = xp + "px";
     el.querySelectorAll(".sd").forEach(c => c.classList.toggle("lit", (+c.getAttribute("cx")) * W / 320 <= xp + 1));
