@@ -4,9 +4,14 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#0e0e10">
-<meta name="app-version" content="bus-v18">
+<meta name="app-version" content="bus-v19">
 <title>LA Bus</title>
 <link rel="manifest" href="manifest.json">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="LA Bus">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="format-detection" content="telephone=no">
 <link rel="icon" href="icon-192.png" type="image/png">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -21,14 +26,16 @@
     --gap:calc(clamp(8px, 1.4vh, 14px) * var(--k, 1));
   }
   * { box-sizing:border-box; }
-  html, body { height:100%; overflow:hidden; overscroll-behavior:none; }   /* главный экран никогда не прокручивается */
+  html, body { height:100%; overflow:hidden; overscroll-behavior:none; -webkit-text-size-adjust:100%; text-size-adjust:100%; }   /* главный экран никогда не прокручивается */
+  body { position:fixed; inset:0; }            /* iPhone: без «резиновой» прокрутки Safari */
+  button { touch-action:manipulation; -webkit-user-select:none; user-select:none; }
   body { margin:0; background:var(--bg); color:var(--text);
          font-family:Rubik, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; -webkit-tap-highlight-color:transparent; }
   button { font:inherit; color:inherit; cursor:pointer; }
 
   /* весь главный экран = ровно высота окна, без прокрутки */
   main { max-width:520px; margin:0 auto; height:100vh; height:100dvh; display:flex; flex-direction:column; gap:var(--gap);
-         padding:calc(env(safe-area-inset-top) + clamp(10px, 2vh, 22px)) 18px calc(env(safe-area-inset-bottom) + 8px); }
+         padding:calc(env(safe-area-inset-top) + clamp(10px, 2vh, 22px)) calc(env(safe-area-inset-right) + 18px) max(calc(env(safe-area-inset-bottom) + 2px), 8px) calc(env(safe-area-inset-left) + 18px); }
 
   /* ===== шапка ===== */
   .top { display:flex; align-items:center; gap:10px; flex:none; }
