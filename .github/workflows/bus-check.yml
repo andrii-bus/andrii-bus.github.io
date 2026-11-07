@@ -24,7 +24,7 @@ jobs:
       - name: Wait for the deployed page
         run: |
           for i in $(seq 1 40); do
-            if curl -sS "https://andrii-bus.github.io/?t=$(date +%s)" | grep -q 'bus-v9'; then echo "live"; exit 0; fi
+            if curl -sS "https://andrii-bus.github.io/?t=$(date +%s)" | grep -q 'bus-v10'; then echo "live"; exit 0; fi
             sleep 15
           done
           echo "page not live"; exit 1
@@ -42,9 +42,9 @@ jobs:
           await p.goto('https://andrii-bus.github.io/?t=' + Date.now());
           await p.setViewportSize({ width: 412, height: 780 });   // Pixel 7, Chrome
           for (const w of ['bushof','kaiserplatz']) {
-            await p.locator(`.seg button[data-w=${w}]`).click();
+            await p.locator(`#seg button[data-w=${w}]`).click();
             await p.waitForTimeout(500);
-            await p.waitForFunction(() => /Обновлено/.test(document.getElementById('status').textContent) && !document.getElementById('radar').classList.contains('busy'), null, {timeout:60000}).catch(()=>console.log('TIMEOUT waiting for data'));
+            await p.waitForFunction(() => /Обновлено/.test(document.getElementById('status').textContent) && !document.getElementById('fab').classList.contains('busy'), null, {timeout:60000}).catch(()=>console.log('TIMEOUT waiting for data'));
             console.log('\n##### Работа: ' + w);
             console.log('status:', await p.locator('#status').innerText());
             console.log('fits one screen:', JSON.stringify(await p.evaluate(() => ({ inner: innerHeight, scroll: document.scrollingElement.scrollHeight }))));
@@ -52,7 +52,7 @@ jobs:
             for (let i = 0; i < 2; i++) {
               await p.locator('.card .more').nth(i).click();
               console.log('== list: ' + await p.locator('#sheetTitle').innerText() + '\n' + (await p.locator('#sheetList').innerText()).slice(0, 1500));
-              await p.locator('.sheet-head [data-close]').click();
+              await p.locator('#sheet [data-close]').click();
             }
             await p.screenshot({ path: `shot-${w}.png` });
           }
