@@ -4,8 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#0e0e10">
-<meta name="app-version" content="bus-v15">
-<title>Куда едем?</title>
+<meta name="app-version" content="bus-v16">
+<title>LA Bus</title>
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="icon-192.png" type="image/png">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
@@ -587,6 +587,25 @@ setInterval(() => {
   });
   render();                                         // пересчёт «через N мин»
 }, 10_000);
+
+// ===== Самообновление =====
+// Если на сайте вышла новая версия, приложение перезагружается само (раз в 10 минут и при каждом возвращении в приложение).
+const APP_VERSION = (document.querySelector('meta[name="app-version"]') || {}).content || "";
+async function checkUpdate() {
+  try {
+    const r = await fetch(location.pathname + "?check=" + Date.now(), { cache: "no-store" });
+    if (!r.ok) return;
+    const m = (await r.text()).match(/name="app-version" content="([^"]+)"/);
+    if (!m || m[1] === APP_VERSION) return;
+    let tried = null; try { tried = sessionStorage.getItem("triedVersion"); } catch {}
+    if (tried === m[1]) return;                       // уже пробовали — не зацикливаемся
+    try { sessionStorage.setItem("triedVersion", m[1]); } catch {}
+    location.replace(location.pathname + "?v=" + encodeURIComponent(m[1]));   // новый адрес — мимо кэша
+  } catch {}
+}
+setInterval(checkUpdate, 10 * 60_000);
+document.addEventListener("visibilitychange", () => { if (!document.hidden) checkUpdate(); });
+setTimeout(checkUpdate, 3000);
 
 // старт: сразу показать сохранённое, потом загрузить свежее
 dirs().forEach(d => { const k = keyOf(d); const c = store.get("cache3:" + k); if (c) state[k] = c; });

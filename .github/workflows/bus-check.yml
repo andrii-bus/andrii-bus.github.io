@@ -24,7 +24,7 @@ jobs:
       - name: Wait for the deployed page
         run: |
           for i in $(seq 1 40); do
-            if curl -sS "https://andrii-bus.github.io/?t=$(date +%s)" | grep -q 'bus-v15'; then echo "live"; exit 0; fi
+            if curl -sS "https://andrii-bus.github.io/?t=$(date +%s)" | grep -q 'bus-v16'; then echo "live"; exit 0; fi
             sleep 15
           done
           echo "page not live"; exit 1
