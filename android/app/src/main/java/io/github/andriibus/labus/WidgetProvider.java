@@ -43,6 +43,11 @@ public class WidgetProvider extends AppWidgetProvider {
             new Row(R.id.c1_label, 0, R.id.c1_time, R.id.c1_late, R.id.c1_cd, R.id.c1_line, 0),
     };
 
+    static final Row[] SQUARE = {
+            new Row(R.id.s0_label, 0, R.id.s0_time, R.id.s0_late, R.id.s0_cd, R.id.s0_line, 0),
+            new Row(R.id.s1_label, 0, R.id.s1_time, R.id.s1_late, R.id.s1_cd, R.id.s1_line, 0),
+    };
+
     @Override
     public void onUpdate(Context ctx, AppWidgetManager mgr, int[] ids) {
         redraw(ctx);
@@ -91,8 +96,10 @@ public class WidgetProvider extends AppWidgetProvider {
         RemoteViews compact = buildCompact(ctx, now, next);
         if (Build.VERSION.SDK_INT >= 31) {
             Map<SizeF, RemoteViews> map = new HashMap<>();
-            map.put(new SizeF(150f, 40f), compact);
-            map.put(new SizeF(240f, 100f), full);
+            map.put(new SizeF(140f, 40f), buildNarrow(ctx, now, next));   // 2×1
+            map.put(new SizeF(220f, 40f), compact);                       // 3×1, 4×1
+            map.put(new SizeF(140f, 100f), buildSquare(ctx, now, next));  // 2×2, 3×2
+            map.put(new SizeF(240f, 100f), full);                         // 4×2
             m.updateAppWidget(ids, new RemoteViews(map));
         } else {
             for (int id : ids) {
@@ -110,8 +117,8 @@ public class WidgetProvider extends AppWidgetProvider {
         RemoteViews v = new RemoteViews(ctx.getPackageName(), R.layout.widget);
         String n0 = Api.name(Prefs.HOME) + " → " + Api.name(w) + "  ⇄";
         String n1 = Api.name(w) + " → " + Api.name(Prefs.HOME) + "  ⇄";
-        next[0] = Math.min(next[0], fill(ctx, v, FULL[0], n0, Prefs.HOME, w, now, false));
-        next[0] = Math.min(next[0], fill(ctx, v, FULL[1], n1, w, Prefs.HOME, now, false));
+        next[0] = Math.min(next[0], fill(ctx, v, FULL[0], n0, Prefs.HOME, w, now, false, true));
+        next[0] = Math.min(next[0], fill(ctx, v, FULL[1], n1, w, Prefs.HOME, now, false, true));
         clicks(ctx, v, R.id.w_root, FULL);
         return v;
     }
@@ -119,9 +126,30 @@ public class WidgetProvider extends AppWidgetProvider {
     static RemoteViews buildCompact(Context ctx, long now, long[] next) {
         String w = Prefs.of(ctx).widgetWork();
         RemoteViews v = new RemoteViews(ctx.getPackageName(), R.layout.widget_compact);
-        next[0] = Math.min(next[0], fill(ctx, v, COMPACT[0], "На " + Api.name(w) + " ⇄", Prefs.HOME, w, now, true));
-        next[0] = Math.min(next[0], fill(ctx, v, COMPACT[1], "Домой", w, Prefs.HOME, now, true));
+        next[0] = Math.min(next[0], fill(ctx, v, COMPACT[0], "На " + Api.name(w) + " ⇄", Prefs.HOME, w, now, true, true));
+        next[0] = Math.min(next[0], fill(ctx, v, COMPACT[1], "Домой", w, Prefs.HOME, now, true, true));
         clicks(ctx, v, R.id.cw_root, COMPACT);
+        return v;
+    }
+
+    /** 2×1: короткие подписи, без минут — только время отправления и номер. */
+    static RemoteViews buildNarrow(Context ctx, long now, long[] next) {
+        String w = Prefs.of(ctx).widgetWork();
+        String shortW = "kaiserplatz".equals(w) ? "Kaiser" : "Bushof";
+        RemoteViews v = new RemoteViews(ctx.getPackageName(), R.layout.widget_compact);
+        next[0] = Math.min(next[0], fill(ctx, v, COMPACT[0], shortW + " ⇄", Prefs.HOME, w, now, true, false));
+        next[0] = Math.min(next[0], fill(ctx, v, COMPACT[1], "Домой", w, Prefs.HOME, now, true, false));
+        clicks(ctx, v, R.id.cw_root, COMPACT);
+        return v;
+    }
+
+    /** 2×2: две карточки друг под другом, без «потом» и платформы. */
+    static RemoteViews buildSquare(Context ctx, long now, long[] next) {
+        String w = Prefs.of(ctx).widgetWork();
+        RemoteViews v = new RemoteViews(ctx.getPackageName(), R.layout.widget_square);
+        next[0] = Math.min(next[0], fill(ctx, v, SQUARE[0], "На " + Api.name(w) + " ⇄", Prefs.HOME, w, now, true, true));
+        next[0] = Math.min(next[0], fill(ctx, v, SQUARE[1], "Домой", w, Prefs.HOME, now, true, true));
+        clicks(ctx, v, R.id.sw_root, SQUARE);
         return v;
     }
 
@@ -133,7 +161,8 @@ public class WidgetProvider extends AppWidgetProvider {
     }
 
     /** Заполняет строку; возвращает момент, когда её надо перерисовать. */
-    static long fill(Context ctx, RemoteViews v, Row r, String label, String from, String to, long now, boolean compact) {
+    static long fill(Context ctx, RemoteViews v, Row r, String label, String from, String to, long now,
+                     boolean compact, boolean showMins) {
         Api.Board b = Api.cached(ctx, from, to);
         List<Api.Trip> up = Api.upcoming(b, now, 0);
         v.setTextViewText(r.label, label);
@@ -159,7 +188,7 @@ public class WidgetProvider extends AppWidgetProvider {
         long mins = Math.max(0, (t.dep - now) / 60_000);
         String cd = mins == 0 ? "сейчас" : (compact ? mins + " мин" : "через " + mins + " мин");
         v.setTextViewText(r.cd, cd);
-        v.setViewVisibility(r.cd, View.VISIBLE);
+        v.setViewVisibility(r.cd, showMins ? View.VISIBLE : View.GONE);
         v.setTextViewText(r.line, t.line);
         v.setViewVisibility(r.line, View.VISIBLE);
         if (r.track != 0) {
