@@ -30,15 +30,28 @@ jobs:
       - name: Signing key
         id: key
         env:
-          KS_B64: ${{ secrets.ANDROID_KS_B64 }}
+          PASS: ${{ secrets.ANDROID_KEY_PASS }}
+          KSP: labus-release-key
         run: |
-          if [ -n "$KS_B64" ]; then
-            echo "$KS_B64" | tr -d ' \n\r' | base64 -d > "$RUNNER_TEMP/labus.p12"
-            echo "KS_PATH=$RUNNER_TEMP/labus.p12" >> "$GITHUB_ENV"
-            echo "signed=1" >> "$GITHUB_OUTPUT"
-          else
-            echo "::warning::Нет ключа ANDROID_KS_B64: сборка подписана временным ключом, релиз не публикуется"
+          if [ -z "$PASS" ]; then
+            echo "::warning::Нет пароля ANDROID_KEY_PASS: сборка подписана временным ключом, релиз не публикуется"
+            exit 0
           fi
+          ENC=android/signing/labus.p12.enc
+          if [ ! -f "$ENC" ]; then
+            # первый запуск: создаём постоянный ключ и сохраняем его в репозитории только в зашифрованном виде
+            keytool -genkeypair -storetype PKCS12 -keystore "$RUNNER_TEMP/labus.p12" -storepass "$KSP" -keypass "$KSP" \
+              -alias labus -keyalg EC -groupname secp256r1 -validity 18250 -dname "CN=LA Bus, O=andrii-bus, C=DE"
+            mkdir -p android/signing
+            openssl enc -aes-256-cbc -pbkdf2 -iter 600000 -salt -in "$RUNNER_TEMP/labus.p12" -out "$ENC" -pass env:PASS
+            git add "$ENC"
+            git -c user.name="LA Bus CI" -c user.email="ci@localhost" commit -qm "Зашифрованный ключ подписи LA Bus"
+            git push -q origin HEAD:main
+          else
+            openssl enc -d -aes-256-cbc -pbkdf2 -iter 600000 -in "$ENC" -out "$RUNNER_TEMP/labus.p12" -pass env:PASS
+          fi
+          echo "KS_PATH=$RUNNER_TEMP/labus.p12" >> "$GITHUB_ENV"
+          echo "signed=1" >> "$GITHUB_OUTPUT"
       - name: Build APK
         working-directory: android
         env:
