@@ -16,20 +16,28 @@
         android:paddingStart="7dp"
         android:paddingEnd="6dp">
 
-        <TextView
-            android:id="@+id/c0_label"
-            android:layout_width="wrap_content"
+        <LinearLayout
+            android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:background="@drawable/pill_ink"
-            android:fontFamily="sans-serif-medium"
-            android:maxLines="1"
-            android:paddingStart="8dp"
-            android:paddingTop="2dp"
-            android:paddingEnd="8dp"
-            android:paddingBottom="3dp"
-            android:text="На Bushof ⇄"
-            android:textColor="#E9EBF3"
-            android:textSize="12sp" />
+            android:layout_weight="1"
+            android:orientation="horizontal">
+
+            <TextView
+                android:id="@+id/c0_label"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:background="@drawable/pill_ink"
+                android:fontFamily="sans-serif-medium"
+                android:ellipsize="end"
+                android:maxLines="1"
+                android:paddingStart="8dp"
+                android:paddingTop="2dp"
+                android:paddingEnd="8dp"
+                android:paddingBottom="3dp"
+                android:text="На Bushof ⇄"
+                android:textColor="#E9EBF3"
+                android:textSize="12sp" />
+        </LinearLayout>
 
         <TextView
             android:id="@+id/c0_time"
@@ -52,6 +60,7 @@
             android:background="@drawable/pill_late"
             android:paddingStart="5dp"
             android:paddingEnd="5dp"
+            android:maxLines="1"
             android:text="+2"
             android:textColor="#FFFFFF"
             android:textSize="11sp"
@@ -59,11 +68,10 @@
 
         <TextView
             android:id="@+id/c0_cd"
-            android:layout_width="0dp"
+            android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:layout_marginStart="6dp"
-            android:ellipsize="end"
+            android:layout_marginStart="5dp"
+            android:layout_marginEnd="6dp"
             android:maxLines="1"
             android:text="14 мин"
             android:textColor="#2E3555"
@@ -94,20 +102,28 @@
         android:paddingStart="7dp"
         android:paddingEnd="6dp">
 
-        <TextView
-            android:id="@+id/c1_label"
-            android:layout_width="wrap_content"
+        <LinearLayout
+            android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:background="@drawable/pill_grey"
-            android:fontFamily="sans-serif-medium"
-            android:maxLines="1"
-            android:paddingStart="8dp"
-            android:paddingTop="2dp"
-            android:paddingEnd="8dp"
-            android:paddingBottom="3dp"
-            android:text="Домой"
-            android:textColor="#E6E6EA"
-            android:textSize="12sp" />
+            android:layout_weight="1"
+            android:orientation="horizontal">
+
+            <TextView
+                android:id="@+id/c1_label"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:background="@drawable/pill_grey"
+                android:fontFamily="sans-serif-medium"
+                android:ellipsize="end"
+                android:maxLines="1"
+                android:paddingStart="8dp"
+                android:paddingTop="2dp"
+                android:paddingEnd="8dp"
+                android:paddingBottom="3dp"
+                android:text="Домой"
+                android:textColor="#E6E6EA"
+                android:textSize="12sp" />
+        </LinearLayout>
 
         <TextView
             android:id="@+id/c1_time"
@@ -130,6 +146,7 @@
             android:background="@drawable/pill_late"
             android:paddingStart="5dp"
             android:paddingEnd="5dp"
+            android:maxLines="1"
             android:text="+2"
             android:textColor="#FFFFFF"
             android:textSize="11sp"
@@ -137,11 +154,10 @@
 
         <TextView
             android:id="@+id/c1_cd"
-            android:layout_width="0dp"
+            android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:layout_marginStart="6dp"
-            android:ellipsize="end"
+            android:layout_marginStart="5dp"
+            android:layout_marginEnd="6dp"
             android:maxLines="1"
             android:text="13 мин"
             android:textColor="#C9C9D2"

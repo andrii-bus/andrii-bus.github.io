@@ -264,9 +264,13 @@ public class MainActivity extends Activity {
         FrameLayout host = new FrameLayout(this);
         root.addView(host, new LinearLayout.LayoutParams(dp(330), dp(150)));
         FrameLayout host2 = new FrameLayout(this);
-        LinearLayout.LayoutParams lp2 = new LinearLayout.LayoutParams(dp(200), dp(64));
+        LinearLayout.LayoutParams lp2 = new LinearLayout.LayoutParams(dp(270), dp(64));
         lp2.topMargin = dp(24);
         root.addView(host2, lp2);
+        FrameLayout host3 = new FrameLayout(this);
+        LinearLayout.LayoutParams lp3 = new LinearLayout.LayoutParams(dp(180), dp(60));
+        lp3.topMargin = dp(16);
+        root.addView(host3, lp3);
         setContentView(root);
         new Thread(() -> {
             String w = Prefs.of(this).widgetWork();
@@ -280,6 +284,8 @@ public class MainActivity extends Activity {
                 host.addView(v1, new FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT));
                 View v2 = WidgetProvider.buildCompact(this, now, nx).apply(this, host2);
                 host2.addView(v2, new FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT));
+                View v3 = WidgetProvider.buildCompact(this, now, nx).apply(this, host3);
+                host3.addView(v3, new FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT));
             });
         }).start();
     }
