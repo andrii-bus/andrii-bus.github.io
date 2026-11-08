@@ -27,6 +27,11 @@ adb logcat -d -v time | grep -E "ActivityTaskManager|ActivityManager|FATAL|Andro
 # 3. Предпросмотр виджета
 adb shell am start -S -W -n $ACT --ez preview true
 sleep 25; shot 3-widget
+# переключатель на виджете: Bushof ⇄ Kaiserplatz
+adb shell am broadcast -n $PKG/.Receiver -a io.github.andriibus.labus.TOGGLE
+sleep 3
+adb shell am start -S -W -n $ACT --ez preview true
+sleep 25; shot 3b-widget-kaiserplatz
 
 # 4. Окно «утро» прямо сейчас (по времени Аахена) → табло должно запуститься само, через будильник
 FROM=$(TZ=Europe/Berlin date -d '-2 min' +%H:%M)

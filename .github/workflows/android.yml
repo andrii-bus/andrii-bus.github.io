@@ -108,14 +108,24 @@ jobs:
     if: needs.build.outputs.signed == '1' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4
         with:
           name: apk
+          path: dist
+      - name: APK on the site (andrii-bus.github.io/LA-Bus.apk)
+        run: |
+          git pull -q --ff-only origin main || true
+          cp dist/LA-Bus.apk LA-Bus.apk
+          git add LA-Bus.apk
+          git -c user.name="LA Bus CI" -c user.email="ci@localhost" commit -qm "LA Bus для Android, сборка ${{ github.run_number }}"
+          git push -q origin HEAD:main
+          sleep 90
       - name: Publish release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release create "android-${{ github.run_number }}" LA-Bus.apk \
+          gh release create "android-${{ github.run_number }}" dist/LA-Bus.apk \
             -R "${{ github.repository }}" --target "${{ github.sha }}" --latest \
             --title "LA Bus для Android · сборка ${{ github.run_number }}" \
-            --notes "Установка: скачать LA-Bus.apk на телефон и открыть."
+            --notes "Установка: https://andrii-bus.github.io/LA-Bus.apk — скачать на телефон и открыть."

@@ -46,7 +46,7 @@ public class RefreshJob extends JobService {
             int hour = ZonedDateTime.now(Prefs.ZONE).getHour();
             boolean night = params.getJobId() == ID_PERIODIC && hour >= 1 && hour < 5;  // ночью не тревожим сервер
             if (!night) {
-                String w = Prefs.of(c).work();
+                String w = Prefs.of(c).widgetWork();
                 Api.loadOrCached(c, Prefs.HOME, w);
                 Api.loadOrCached(c, w, Prefs.HOME);
             }

@@ -36,7 +36,7 @@
                 android:paddingTop="2dp"
                 android:paddingEnd="9dp"
                 android:paddingBottom="3dp"
-                android:text="Schanz → Bushof"
+                android:text="Schanz → Bushof  ⇄"
                 android:textColor="#E9EBF3"
                 android:textSize="12sp" />
 
@@ -166,7 +166,7 @@
                 android:paddingTop="2dp"
                 android:paddingEnd="9dp"
                 android:paddingBottom="3dp"
-                android:text="Bushof → Schanz"
+                android:text="Bushof → Schanz  ⇄"
                 android:textColor="#E6E6EA"
                 android:textSize="12sp" />
 

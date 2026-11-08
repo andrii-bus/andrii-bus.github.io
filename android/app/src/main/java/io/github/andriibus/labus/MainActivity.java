@@ -216,7 +216,7 @@ public class MainActivity extends Activity {
     private void checkUpdate() {
         Prefs p = Prefs.of(this);
         long now = System.currentTimeMillis();
-        if (now - p.getLong("updCheck", 0) < 6 * 3_600_000L) return;
+        if (now - p.getLong("updCheck", 0) < 3 * 3_600_000L) return;
         p.putLong("updCheck", now);
         new Thread(() -> {
             try {
@@ -230,19 +230,13 @@ public class MainActivity extends Activity {
                 if (!tag.startsWith("android-")) return;
                 int code = Integer.parseInt(tag.substring(8));
                 if (code <= BuildConfig.VERSION_CODE) return;
-                String url = null;
-                JSONArray assets = r.optJSONArray("assets");
-                if (assets != null) for (int i = 0; i < assets.length(); i++) {
-                    JSONObject a = assets.getJSONObject(i);
-                    if (a.optString("name").endsWith(".apk")) url = a.optString("browser_download_url");
-                }
-                if (url == null) return;
-                final String dl = url;
+                // файл берём с сайта: со страницы релизов Chrome на Pixel скачивает с зависанием
+                final String dl = SITE + "LA-Bus.apk?v=" + code;
                 runOnUiThread(() -> {
                     if (isFinishing()) return;
                     new AlertDialog.Builder(this)
                             .setTitle("Есть новая версия LA Bus")
-                            .setMessage("Скачать и установить обновление?")
+                            .setMessage("Скачай файл и открой его — обновление встанет поверх, настройки сохранятся.")
                             .setPositiveButton("Скачать", (d, w) -> {
                                 try { startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(dl))); } catch (Exception ignored) { }
                             })
@@ -270,20 +264,21 @@ public class MainActivity extends Activity {
         FrameLayout host = new FrameLayout(this);
         root.addView(host, new LinearLayout.LayoutParams(dp(330), dp(150)));
         FrameLayout host2 = new FrameLayout(this);
-        LinearLayout.LayoutParams lp2 = new LinearLayout.LayoutParams(dp(250), dp(120));
+        LinearLayout.LayoutParams lp2 = new LinearLayout.LayoutParams(dp(200), dp(64));
         lp2.topMargin = dp(24);
         root.addView(host2, lp2);
         setContentView(root);
         new Thread(() -> {
-            String w = Prefs.of(this).work();
+            String w = Prefs.of(this).widgetWork();
             Api.Board a = Api.loadOrCached(this, Prefs.HOME, w);
             Api.Board b = Api.loadOrCached(this, w, Prefs.HOME);
             runOnUiThread(() -> {
                 t.setText("Предпросмотр виджета · рейсов: " + (a == null ? "—" : a.trips.size()) + " / " + (b == null ? "—" : b.trips.size()));
-                RemoteViews rv = WidgetProvider.build(this, false);
-                View v1 = rv.apply(this, host);
+                long now = System.currentTimeMillis();
+                long[] nx = {Long.MAX_VALUE};
+                View v1 = WidgetProvider.buildFull(this, now, nx).apply(this, host);
                 host.addView(v1, new FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT));
-                View v2 = WidgetProvider.build(this, false).apply(this, host2);
+                View v2 = WidgetProvider.buildCompact(this, now, nx).apply(this, host2);
                 host2.addView(v2, new FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT));
             });
         }).start();

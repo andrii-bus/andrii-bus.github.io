@@ -7,22 +7,41 @@ import android.appwidget.AppWidgetProvider;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
+import android.os.Build;
 import android.os.Bundle;
+import android.util.SizeF;
 import android.view.View;
 import android.widget.RemoteViews;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
-/** Виджет: две строки, как две карточки приложения. Минуты тикают сами (обратный отсчёт). */
+/**
+ * Виджет. Два вида, Android сам выбирает по размеру:
+ *  — полный (от 4×2): две строки, как карточки приложения;
+ *  — компактный (от 2×1): две тонкие строки «На работу» / «Домой».
+ * Нажатие на ярлык с ⇄ переключает работу: Bushof ⇄ Kaiserplatz.
+ */
 public class WidgetProvider extends AppWidgetProvider {
 
-    static final int[] LABEL = {R.id.r0_label, R.id.r1_label};
-    static final int[] NEXT = {R.id.r0_next, R.id.r1_next};
-    static final int[] TIME = {R.id.r0_time, R.id.r1_time};
-    static final int[] LATE = {R.id.r0_late, R.id.r1_late};
-    static final int[] CD = {R.id.r0_cd, R.id.r1_cd};
-    static final int[] LINE = {R.id.r0_line, R.id.r1_line};
-    static final int[] TRACK = {R.id.r0_track, R.id.r1_track};
+    /** Набор id одной строки в разметке. */
+    static final class Row {
+        final int label, next, time, late, cd, line, track;
+        Row(int label, int next, int time, int late, int cd, int line, int track) {
+            this.label = label; this.next = next; this.time = time; this.late = late;
+            this.cd = cd; this.line = line; this.track = track;
+        }
+    }
+
+    static final Row[] FULL = {
+            new Row(R.id.r0_label, R.id.r0_next, R.id.r0_time, R.id.r0_late, R.id.r0_cd, R.id.r0_line, R.id.r0_track),
+            new Row(R.id.r1_label, R.id.r1_next, R.id.r1_time, R.id.r1_late, R.id.r1_cd, R.id.r1_line, R.id.r1_track),
+    };
+    static final Row[] COMPACT = {
+            new Row(R.id.c0_label, 0, R.id.c0_time, R.id.c0_late, R.id.c0_cd, R.id.c0_line, 0),
+            new Row(R.id.c1_label, 0, R.id.c1_time, R.id.c1_late, R.id.c1_cd, R.id.c1_line, 0),
+    };
 
     @Override
     public void onUpdate(Context ctx, AppWidgetManager mgr, int[] ids) {
@@ -37,7 +56,9 @@ public class WidgetProvider extends AppWidgetProvider {
 
     @Override
     public void onDisabled(Context ctx) {
+        if (hasWidgets(ctx)) return;  // остался виджет другого вида
         RefreshJob.cancelPeriodic(ctx);
+        scheduleRoll(ctx, Long.MAX_VALUE);
     }
 
     @Override
@@ -45,63 +66,111 @@ public class WidgetProvider extends AppWidgetProvider {
         redraw(ctx);
     }
 
-    static boolean hasWidgets(Context ctx) {
-        int[] ids = AppWidgetManager.getInstance(ctx).getAppWidgetIds(new ComponentName(ctx, WidgetProvider.class));
-        return ids != null && ids.length > 0;
+    /** Все виджеты LA Bus: большой и компактный. */
+    static int[] allIds(Context ctx) {
+        AppWidgetManager m = AppWidgetManager.getInstance(ctx);
+        int[] a = m.getAppWidgetIds(new ComponentName(ctx, WidgetProvider.class));
+        int[] b = m.getAppWidgetIds(new ComponentName(ctx, WidgetCompactProvider.class));
+        if (a == null) a = new int[0];
+        if (b == null) b = new int[0];
+        int[] all = new int[a.length + b.length];
+        System.arraycopy(a, 0, all, 0, a.length);
+        System.arraycopy(b, 0, all, a.length, b.length);
+        return all;
     }
+
+    static boolean hasWidgets(Context ctx) { return allIds(ctx).length > 0; }
 
     public static void redraw(Context ctx) {
         AppWidgetManager m = AppWidgetManager.getInstance(ctx);
-        int[] ids = m.getAppWidgetIds(new ComponentName(ctx, WidgetProvider.class));
-        if (ids == null || ids.length == 0) { scheduleRoll(ctx, Long.MAX_VALUE); return; }
-        m.updateAppWidget(ids, build(ctx, true));
+        int[] ids = allIds(ctx);
+        if (ids.length == 0) { scheduleRoll(ctx, Long.MAX_VALUE); return; }
+        long now = System.currentTimeMillis();
+        long[] next = {Long.MAX_VALUE};
+        RemoteViews full = buildFull(ctx, now, next);
+        RemoteViews compact = buildCompact(ctx, now, next);
+        if (Build.VERSION.SDK_INT >= 31) {
+            Map<SizeF, RemoteViews> map = new HashMap<>();
+            map.put(new SizeF(150f, 40f), compact);
+            map.put(new SizeF(240f, 100f), full);
+            m.updateAppWidget(ids, new RemoteViews(map));
+        } else {
+            for (int id : ids) {
+                Bundle o = m.getAppWidgetOptions(id);
+                int h = o.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT, 110);
+                int w = o.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH, 250);
+                m.updateAppWidget(id, h >= 100 && w >= 240 ? buildFull(ctx, now, next) : buildCompact(ctx, now, next));
+            }
+        }
+        scheduleRoll(ctx, next[0]);
     }
 
-    static RemoteViews build(Context ctx, boolean roll) {
-        String w = Prefs.of(ctx).work();
-        long now = System.currentTimeMillis();
+    static RemoteViews buildFull(Context ctx, long now, long[] next) {
+        String w = Prefs.of(ctx).widgetWork();
         RemoteViews v = new RemoteViews(ctx.getPackageName(), R.layout.widget);
-        long next = Math.min(fill(ctx, v, 0, Prefs.HOME, w, now), fill(ctx, v, 1, w, Prefs.HOME, now));
-        v.setOnClickPendingIntent(R.id.w_root, Notif.open(ctx));
-        if (roll) scheduleRoll(ctx, next);
+        String n0 = Api.name(Prefs.HOME) + " → " + Api.name(w) + "  ⇄";
+        String n1 = Api.name(w) + " → " + Api.name(Prefs.HOME) + "  ⇄";
+        next[0] = Math.min(next[0], fill(ctx, v, FULL[0], n0, Prefs.HOME, w, now, false));
+        next[0] = Math.min(next[0], fill(ctx, v, FULL[1], n1, w, Prefs.HOME, now, false));
+        clicks(ctx, v, R.id.w_root, FULL);
         return v;
     }
 
-    /** Заполняет строку; возвращает момент, когда её надо перерисовать (уход ближайшего автобуса). */
-    static long fill(Context ctx, RemoteViews v, int i, String from, String to, long now) {
+    static RemoteViews buildCompact(Context ctx, long now, long[] next) {
+        String w = Prefs.of(ctx).widgetWork();
+        RemoteViews v = new RemoteViews(ctx.getPackageName(), R.layout.widget_compact);
+        next[0] = Math.min(next[0], fill(ctx, v, COMPACT[0], "На " + Api.name(w) + " ⇄", Prefs.HOME, w, now, true));
+        next[0] = Math.min(next[0], fill(ctx, v, COMPACT[1], "Домой", w, Prefs.HOME, now, true));
+        clicks(ctx, v, R.id.cw_root, COMPACT);
+        return v;
+    }
+
+    static void clicks(Context ctx, RemoteViews v, int root, Row[] rows) {
+        v.setOnClickPendingIntent(root, Notif.open(ctx));
+        Intent t = new Intent(ctx, Receiver.class).setAction(Receiver.ACTION_TOGGLE);
+        PendingIntent pi = PendingIntent.getBroadcast(ctx, 11, t, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+        for (Row r : rows) v.setOnClickPendingIntent(r.label, pi);
+    }
+
+    /** Заполняет строку; возвращает момент, когда её надо перерисовать. */
+    static long fill(Context ctx, RemoteViews v, Row r, String label, String from, String to, long now, boolean compact) {
         Api.Board b = Api.cached(ctx, from, to);
         List<Api.Trip> up = Api.upcoming(b, now, 0);
-        v.setTextViewText(LABEL[i], Api.name(from) + " → " + Api.name(to));
+        v.setTextViewText(r.label, label);
         if (up.isEmpty()) {
-            v.setTextViewText(TIME[i], "—");
-            v.setViewVisibility(CD[i], View.GONE);
-            v.setViewVisibility(LATE[i], View.GONE);
-            v.setViewVisibility(LINE[i], View.GONE);
-            v.setViewVisibility(TRACK[i], View.GONE);
-            v.setTextViewText(NEXT[i], b == null ? "нет данных" : "нет рейсов");
+            v.setTextViewText(r.time, "—");
+            v.setTextViewText(r.cd, b == null ? "нет данных" : "нет рейсов");
+            v.setViewVisibility(r.cd, View.VISIBLE);
+            v.setViewVisibility(r.late, View.GONE);
+            v.setViewVisibility(r.line, View.GONE);
+            if (r.track != 0) v.setViewVisibility(r.track, View.GONE);
+            if (r.next != 0) v.setTextViewText(r.next, "");
             return Long.MAX_VALUE;
         }
         Api.Trip t = up.get(0);
-        v.setTextViewText(TIME[i], Notif.hm(t.dep));
+        v.setTextViewText(r.time, Notif.hm(t.dep));
         int late = t.lateMin();
         if (late > 0) {
-            v.setTextViewText(LATE[i], "+" + late);
-            v.setViewVisibility(LATE[i], View.VISIBLE);
+            v.setTextViewText(r.late, "+" + late);
+            v.setViewVisibility(r.late, View.VISIBLE);
         } else {
-            v.setViewVisibility(LATE[i], View.GONE);
+            v.setViewVisibility(r.late, View.GONE);
         }
         long mins = Math.max(0, (t.dep - now) / 60_000);
-        v.setTextViewText(CD[i], mins == 0 ? "сейчас" : "через " + mins + " мин");
-        v.setViewVisibility(CD[i], View.VISIBLE);
-        v.setTextViewText(LINE[i], t.line);
-        v.setViewVisibility(LINE[i], View.VISIBLE);
-        if (!t.trackShort().isEmpty()) {
-            v.setTextViewText(TRACK[i], t.trackShort());
-            v.setViewVisibility(TRACK[i], View.VISIBLE);
-        } else {
-            v.setViewVisibility(TRACK[i], View.GONE);
+        String cd = mins == 0 ? "сейчас" : (compact ? mins + " мин" : "через " + mins + " мин");
+        v.setTextViewText(r.cd, cd);
+        v.setViewVisibility(r.cd, View.VISIBLE);
+        v.setTextViewText(r.line, t.line);
+        v.setViewVisibility(r.line, View.VISIBLE);
+        if (r.track != 0) {
+            if (!t.trackShort().isEmpty()) {
+                v.setTextViewText(r.track, t.trackShort());
+                v.setViewVisibility(r.track, View.VISIBLE);
+            } else {
+                v.setViewVisibility(r.track, View.GONE);
+            }
         }
-        v.setTextViewText(NEXT[i], up.size() > 1 ? "потом " + Notif.hm(up.get(1).dep) : "");
+        if (r.next != 0) v.setTextViewText(r.next, up.size() > 1 ? "потом " + Notif.hm(up.get(1).dep) : "");
         // перерисовать к следующей минуте (минуты в строке) или к уходу автобуса
         long nextMinute = (now / 60_000 + 1) * 60_000 + 500;
         return Math.min(nextMinute, t.dep + 5_000);

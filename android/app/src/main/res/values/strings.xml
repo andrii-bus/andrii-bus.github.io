@@ -1,4 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="widget_desc">Ближайшие автобусы Schanz ⇄ работа</string>
+    <string name="widget_desc_compact">Компактно: на работу и домой</string>
 </resources>

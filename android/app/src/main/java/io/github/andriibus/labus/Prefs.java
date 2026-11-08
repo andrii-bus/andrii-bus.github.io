@@ -31,6 +31,18 @@ public final class Prefs {
         if ("bushof".equals(w) || "kaiserplatz".equals(w)) sp.edit().putString("work", w).apply();
     }
 
+    /** Работа для виджета (переключается кнопкой ⇄ на самом виджете). */
+    public String widgetWork() {
+        String w = sp.getString("wwork", null);
+        if (w == null) return work();
+        return "kaiserplatz".equals(w) ? "kaiserplatz" : "bushof";
+    }
+    public String toggleWidgetWork() {
+        String w = "bushof".equals(widgetWork()) ? "kaiserplatz" : "bushof";
+        sp.edit().putString("wwork", w).apply();
+        return w;
+    }
+
     static JSONObject slotDefault(String from, String to) throws JSONException {
         return new JSONObject().put("on", false).put("from", from).put("to", to)
                 .put("days", new JSONArray().put(1).put(2).put(3).put(4).put(5));

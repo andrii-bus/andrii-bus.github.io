@@ -8,6 +8,7 @@ import android.content.Intent;
 public class Receiver extends BroadcastReceiver {
     static final String ACTION_ROLL = "io.github.andriibus.labus.ROLL";
     static final String ACTION_REFRESH = "io.github.andriibus.labus.REFRESH";
+    static final String ACTION_TOGGLE = "io.github.andriibus.labus.TOGGLE";
 
     @Override
     public void onReceive(Context ctx, Intent intent) {
@@ -24,6 +25,11 @@ public class Receiver extends BroadcastReceiver {
             }
             case ACTION_ROLL:
                 WidgetProvider.redraw(ctx);
+                break;
+            case ACTION_TOGGLE:
+                Prefs.of(ctx).toggleWidgetWork();
+                WidgetProvider.redraw(ctx);
+                RefreshJob.runNow(ctx);
                 break;
             case ACTION_REFRESH:
                 RefreshJob.runNow(ctx);
