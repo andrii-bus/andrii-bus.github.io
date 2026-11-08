@@ -82,6 +82,17 @@ public class MainActivity extends Activity {
             }
 
             @Override
+            public boolean onRenderProcessGone(WebView view, android.webkit.RenderProcessGoneDetail detail) {
+                // движок страницы упал — пересоздаём экран, а не закрываем приложение
+                Log.w(TAG, "renderer gone, crash=" + detail.didCrash());
+                if (wv == view) wv = null;
+                ((android.view.ViewGroup) view.getParent()).removeView(view);
+                view.destroy();
+                recreate();
+                return true;
+            }
+
+            @Override
             public void onPageFinished(WebView view, String url) {
                 if (url != null && url.startsWith(SITE)) errorShown = false;
                 String js64 = getIntent().getStringExtra("js64");

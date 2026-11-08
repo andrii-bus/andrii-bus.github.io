@@ -22,6 +22,7 @@ sleep 30; shot 1-app
 # 2. Панель уведомлений
 adb shell am start -S -W -n $ACT --es js64 "$(js 'openNotif()')"
 sleep 25; shot 2-settings
+adb logcat -d -v time | grep -E "ActivityTaskManager|ActivityManager|FATAL|AndroidRuntime|LABus|crash|Crash|Render|chromium.*(Error|FATAL)|Kill|kill|died|ANR" | tail -80 > shots/step2.txt
 
 # 3. Предпросмотр виджета
 adb shell am start -S -W -n $ACT --ez preview true
