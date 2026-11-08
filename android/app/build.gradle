@@ -19,6 +19,7 @@ android {
         release {
             if (ksPath) {
                 storeFile file(ksPath)
+                storeType 'pkcs12'
                 storePassword env['KS_PASS']
                 keyAlias 'labus'
                 keyPassword env['KS_PASS']
