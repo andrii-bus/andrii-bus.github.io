@@ -8,7 +8,6 @@ import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.os.Bundle;
-import android.os.SystemClock;
 import android.view.View;
 import android.widget.RemoteViews;
 
@@ -91,20 +90,21 @@ public class WidgetProvider extends AppWidgetProvider {
         } else {
             v.setViewVisibility(LATE[i], View.GONE);
         }
-        long base = SystemClock.elapsedRealtime() + (t.dep - now);
-        v.setChronometer(CD[i], base, "через %s", true);
-        v.setChronometerCountDown(CD[i], true);
+        long mins = Math.max(0, (t.dep - now) / 60_000);
+        v.setTextViewText(CD[i], mins == 0 ? "сейчас" : "через " + mins + " мин");
         v.setViewVisibility(CD[i], View.VISIBLE);
         v.setTextViewText(LINE[i], t.line);
         v.setViewVisibility(LINE[i], View.VISIBLE);
-        if (t.track != null && !t.track.isEmpty()) {
-            v.setTextViewText(TRACK[i], t.track);
+        if (!t.trackShort().isEmpty()) {
+            v.setTextViewText(TRACK[i], t.trackShort());
             v.setViewVisibility(TRACK[i], View.VISIBLE);
         } else {
             v.setViewVisibility(TRACK[i], View.GONE);
         }
         v.setTextViewText(NEXT[i], up.size() > 1 ? "потом " + Notif.hm(up.get(1).dep) : "");
-        return t.dep + 5_000;
+        // перерисовать к следующей минуте (минуты в строке) или к уходу автобуса
+        long nextMinute = (now / 60_000 + 1) * 60_000 + 500;
+        return Math.min(nextMinute, t.dep + 5_000);
     }
 
     static void scheduleRoll(Context ctx, long at) {

@@ -4,13 +4,16 @@ set -u
 PKG=io.github.andriibus.labus
 ACT=$PKG/.MainActivity
 mkdir -p shots
-shot() { adb exec-out screencap -p > "shots/$1.png"; echo "снимок $1"; }
+shot() {
+  adb exec-out screencap -p > "shots/$1.png"
+  echo "снимок $1 · на экране: $(adb shell dumpsys activity activities | grep -m1 -E 'topResumedActivity|mResumedActivity' | tr -s ' ')"
+}
 js() { printf '%s' "$1" | base64 -w0; }
 
 adb install -r LA-Bus.apk || exit 1
 adb shell pm grant $PKG android.permission.POST_NOTIFICATIONS
 adb shell settings put system time_12_24 24
-adb logcat -c
+adb logcat -G 16M; adb logcat -c
 
 # 1. Главный экран
 adb shell am start -W -n $ACT
@@ -46,7 +49,7 @@ sleep 4; shot 5-test
 adb shell dumpsys notification --noredact | grep -A3 "pkg=$PKG" | head -40 > shots/notif-test.txt
 adb shell cmd statusbar collapse
 
-adb logcat -d -v time > shots/logcat-full.txt
+adb logcat -d -v time | grep -vE "chromium|cr_|WebView|Chrome" > shots/logcat-full.txt
 grep -E "LABus|FATAL|AndroidRuntime" shots/logcat-full.txt | grep -v "^--" > shots/log.txt || true
 cat shots/log.txt | tail -60
 echo "--- notif-scheduled"; cat shots/notif-scheduled.txt

@@ -137,15 +137,16 @@ public class BusService extends Service {
         int late = t.lateMin();
         int depIn = (int) Math.max(0, Math.floor((t.dep - now) / 60000.0));
 
-        String title = t.line + " → " + dest + " · " + Notif.hm(t.dep) + (late > 0 ? " (+" + late + ")" : "");
+        String title = t.line + " → " + dest + " · " + Notif.hm(t.dep) + (late > 0 ? " (+" + late + ")" : "")
+                + " · через " + depIn + " мин";
         StringBuilder text = new StringBuilder(leaveIn <= 0 ? "Пора выходить" : "Выходи через " + leaveIn + " мин");
-        if (t.track != null && !t.track.isEmpty()) text.append(" · ").append(t.track);
+        if (!t.trackShort().isEmpty()) text.append(" · ").append(t.trackShort());
         if (next != null) text.append(" · дальше ").append(Notif.hm(next.dep));
-        nm.notify(NID, Notif.trip(this, title, text.toString(), t.dep));
+        nm.notify(NID, Notif.trip(this, title, text.toString(), 0));
 
         if (!p.settings().optBoolean("leave", true)) return;
         String body = t.line + " → " + dest + " в " + Notif.hm(t.dep) + " · через " + depIn + " мин"
-                + (t.track != null && !t.track.isEmpty() ? " · " + t.track : "");
+                + (!t.trackShort().isEmpty() ? " · " + t.trackShort() : "");
         if (test) {
             if (!testAlertSent && lastFetch > 0) {
                 testAlertSent = true;

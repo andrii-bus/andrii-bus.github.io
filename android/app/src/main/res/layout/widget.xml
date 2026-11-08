@@ -16,8 +16,8 @@
         android:orientation="vertical"
         android:paddingStart="14dp"
         android:paddingEnd="12dp"
-        android:paddingTop="6dp"
-        android:paddingBottom="6dp">
+        android:paddingTop="5dp"
+        android:paddingBottom="5dp">
 
         <LinearLayout
             android:layout_width="match_parent"
@@ -58,7 +58,7 @@
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="2dp"
+            android:layout_marginTop="1dp"
             android:gravity="center_vertical"
             android:orientation="horizontal">
 
@@ -71,7 +71,7 @@
                 android:maxLines="1"
                 android:text="08:14"
                 android:textColor="#15161C"
-                android:textSize="26sp"
+                android:textSize="23sp"
                 android:textStyle="bold" />
 
             <TextView
@@ -89,7 +89,7 @@
                 android:textSize="12sp"
                 android:visibility="gone" />
 
-            <Chronometer
+            <TextView
                 android:id="@+id/r0_cd"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
@@ -105,8 +105,8 @@
 
             <TextView
                 android:id="@+id/r0_line"
-                android:layout_width="34dp"
-                android:layout_height="34dp"
+                android:layout_width="30dp"
+                android:layout_height="30dp"
                 android:background="@drawable/circle_white"
                 android:fontFamily="sans-serif-medium"
                 android:gravity="center"
@@ -146,8 +146,8 @@
         android:orientation="vertical"
         android:paddingStart="14dp"
         android:paddingEnd="12dp"
-        android:paddingTop="6dp"
-        android:paddingBottom="6dp">
+        android:paddingTop="5dp"
+        android:paddingBottom="5dp">
 
         <LinearLayout
             android:layout_width="match_parent"
@@ -188,7 +188,7 @@
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="2dp"
+            android:layout_marginTop="1dp"
             android:gravity="center_vertical"
             android:orientation="horizontal">
 
@@ -201,7 +201,7 @@
                 android:maxLines="1"
                 android:text="08:22"
                 android:textColor="#F4F4F6"
-                android:textSize="26sp"
+                android:textSize="23sp"
                 android:textStyle="bold" />
 
             <TextView
@@ -219,7 +219,7 @@
                 android:textSize="12sp"
                 android:visibility="gone" />
 
-            <Chronometer
+            <TextView
                 android:id="@+id/r1_cd"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
@@ -235,8 +235,8 @@
 
             <TextView
                 android:id="@+id/r1_line"
-                android:layout_width="34dp"
-                android:layout_height="34dp"
+                android:layout_width="30dp"
+                android:layout_height="30dp"
                 android:background="@drawable/circle_dark"
                 android:fontFamily="sans-serif-medium"
                 android:gravity="center"

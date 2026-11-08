@@ -76,6 +76,12 @@ public final class Api {
             return t;
         }
 
+        /** Платформа без уточнения в скобках: «H.1 (Lütticher Str.)» → «H.1». */
+        public String trackShort() {
+            if (track == null) return "";
+            return track.replaceAll("\\s*\\(.*\\)\\s*$", "").trim();
+        }
+
         /** Опоздание в минутах (0, если по расписанию). */
         public int lateMin() { return (int) Math.round((dep - depSched) / 60000.0); }
     }
