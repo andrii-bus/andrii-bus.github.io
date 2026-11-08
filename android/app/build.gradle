@@ -1,0 +1,43 @@
+plugins { id 'com.android.application' }
+
+def env = System.getenv()
+def ksPath = env['KS_PATH']
+
+android {
+    namespace 'io.github.andriibus.labus'
+    compileSdk 34
+
+    defaultConfig {
+        applicationId 'io.github.andriibus.labus'
+        minSdk 26
+        targetSdk 34
+        versionCode Integer.parseInt(env['VCODE'] ?: '1')
+        versionName env['VNAME'] ?: '1.0.0'
+    }
+
+    signingConfigs {
+        release {
+            if (ksPath) {
+                storeFile file(ksPath)
+                storePassword env['KS_PASS']
+                keyAlias 'labus'
+                keyPassword env['KS_PASS']
+            }
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            signingConfig ksPath ? signingConfigs.release : signingConfigs.debug
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+
+    buildFeatures { buildConfig true }
+    lint { abortOnError false; checkReleaseBuilds false }
+}

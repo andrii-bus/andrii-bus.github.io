@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#0e0e10">
-<meta name="app-version" content="bus-v32">
+<meta name="app-version" content="bus-v33">
 <title>LA Bus</title>
 <link rel="manifest" href="manifest.json">
 <meta name="mobile-web-app-capable" content="yes">
@@ -52,6 +52,31 @@
   /* выбор персонажа */
   .picker { position:fixed; inset:0; z-index:11; background:rgba(0,0,0,.55); display:flex; flex-direction:column; justify-content:flex-end; }
   .picker[hidden] { display:none; }
+  /* Android: уведомления по расписанию */
+  .bell { width:44px; height:44px; border-radius:50%; border:1.5px solid #4a4a52; background:#2a2a30; color:#cfd2e0; display:grid; place-items:center; flex:none; padding:0; }
+  .bell[hidden] { display:none; }
+  .bell svg { width:20px; height:20px; fill:none; stroke:currentColor; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; }
+  .bell.on { color:#15161c; background:linear-gradient(180deg, #c4d0f8, #adbcf0); border-color:transparent; }
+  .ns { display:flex; flex-direction:column; gap:12px; overflow-y:auto; padding:2px; }
+  .ns-card { background:#1f1f23; border-radius:18px; padding:14px; display:flex; flex-direction:column; gap:12px; }
+  .ns-body { display:flex; flex-direction:column; gap:12px; }
+  .ns-off .ns-body { opacity:.4; pointer-events:none; }
+  .ns-row { display:flex; align-items:center; justify-content:space-between; gap:10px; }
+  .ns-title { font-size:17px; font-weight:600; }
+  .ns-sub { font-size:13px; color:var(--muted); }
+  .ns-warn { color:var(--warn); font-size:13px; }
+  .sw { position:relative; width:52px; height:30px; border-radius:15px; background:#3a3a40; border:0; flex:none; padding:0; transition:background .2s; }
+  .sw::after { content:""; position:absolute; top:3px; left:3px; width:24px; height:24px; border-radius:50%; background:#fff; transition:transform .2s; }
+  .sw.on { background:#7d8fe0; }
+  .sw.on::after { transform:translateX(22px); }
+  .ns input[type=time] { flex:1; min-width:0; background:#2a2a30; color:var(--text); border:1px solid #3a3a42; border-radius:12px; padding:8px 10px; font:inherit; font-size:17px; color-scheme:dark; }
+  .days { display:flex; gap:6px; }
+  .days button { flex:1; border:0; border-radius:10px; padding:8px 0; background:#2a2a30; color:#9d9da6; font:inherit; font-size:13px; }
+  .days button.on { background:#b9c7f5; color:#15161c; font-weight:600; }
+  .step { display:flex; align-items:center; gap:8px; }
+  .step button { width:34px; height:34px; border-radius:50%; border:0; background:#2a2a30; color:var(--text); font-size:20px; line-height:1; }
+  .step b { min-width:56px; text-align:center; font-weight:500; }
+  .ns-test { border:0; border-radius:16px; padding:14px; background:linear-gradient(180deg, #fff, #e9ebf3); color:#111; font:inherit; font-weight:600; font-size:16px; }
   .picker-panel { max-width:520px; width:100%; margin:0 auto; max-height:86dvh; display:flex; flex-direction:column; background:#151517;
                   border-radius:26px 26px 0 0; padding:16px 14px calc(env(safe-area-inset-bottom) + 14px); }
   .picker-head { display:flex; align-items:center; justify-content:space-between; margin:0 4px 12px; }
@@ -194,9 +219,17 @@
   <div class="bar">
     <button class="avatar" id="pickBtn" type="button" aria-label="Выбрать персонажа"><img src="avatar.png" alt="" draggable="false"><span class="dots">⋯</span></button>
     <div class="status" id="status">Загрузка…</div>
+    <button class="bell" id="bellBtn" type="button" aria-label="Уведомления" hidden><svg viewBox="0 0 24 24"><path d="M6 8a6 6 0 1 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg></button>
     <button class="fab" id="fab" type="button" aria-label="Обновить"><svg viewBox="0 0 24 24"><path d="M20 12a8 8 0 1 1-2.34-5.66"/><path d="M20 4v5h-5"/></svg></button>
   </div>
 </main>
+
+<div class="picker" id="notif" hidden>
+  <div class="picker-panel">
+    <div class="picker-head"><h3>Уведомления</h3><button type="button" data-nclose aria-label="Закрыть">✕</button></div>
+    <div class="ns" id="nsBody"></div>
+  </div>
+</div>
 
 <div class="picker" id="picker" hidden>
   <div class="picker-panel">
@@ -715,6 +748,7 @@ document.addEventListener("selectstart", e => e.preventDefault());
 $("seg").addEventListener("click", e => {
   const b = e.target.closest("button[data-w]"); if (!b || b.dataset.w === work) return;
   work = b.dataset.w; store.set("work", work); lastTouch = Date.now();
+  if (AND) { try { AND.setWork(work); } catch {} }
   dirs().forEach(d => { const k = keyOf(d); if (!state[k]) { const c = store.get("cache3:" + k); if (c) state[k] = c; } });
   closeSheet(); renderSeg(); render(); loadAll();
 });
@@ -723,7 +757,7 @@ $("cards").addEventListener("click", e => {
   lastTouch = Date.now(); openSheet(b.dataset.k);
 });
 $("sheet").addEventListener("click", e => { if (e.target.closest("[data-close]") || e.target === $("sheet")) closeSheet(); });
-document.addEventListener("keydown", e => { if (e.key === "Escape") { if (pickerOpen) closePicker(); else closeSheet(); } });
+document.addEventListener("keydown", e => { if (e.key === "Escape") { if (notifOpen) closeNotif(); else if (pickerOpen) closePicker(); else closeSheet(); } });
 
 // Панель «Все рейсы» — это шаг в истории браузера: жест/кнопка «Назад» на Android закрывает её, а не приложение.
 function openSheet(k) {
@@ -736,7 +770,89 @@ function closeSheet(fromBack) {
   sheetKey = null; renderSheet();
   if (!fromBack && history.state && history.state.sheet) { try { history.back(); } catch {} }
 }
-addEventListener("popstate", () => { if (pickerOpen) closePicker(true); else if (sheetKey) closeSheet(true); });
+addEventListener("popstate", () => { if (notifOpen) closeNotif(true); else if (pickerOpen) closePicker(true); else if (sheetKey) closeSheet(true); });
+
+// ===== Android-приложение: уведомления по расписанию =====
+const AND = window.LABusAndroid || null;
+let notifOpen = false, ns = null;
+const DAY = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"];
+function nsLoad() { try { ns = JSON.parse(AND.getSettings()); } catch { ns = null; } return ns; }
+function nsSave() {
+  const { notifAllowed, ...data } = ns;
+  try { AND.saveSettings(JSON.stringify(data)); } catch {}
+  renderBell();
+}
+function renderBell() {
+  const b = $("bellBtn");
+  b.hidden = !AND;
+  if (!AND) return;
+  b.classList.toggle("on", !!(ns && ((ns.morning && ns.morning.on) || (ns.evening && ns.evening.on))));
+}
+function slotHtml(id, title, sub) {
+  const s = ns[id];
+  const bad = s.to <= s.from ? `<div class="ns-warn">Конец должен быть позже начала</div>` : "";
+  return `<div class="ns-card${s.on ? "" : " ns-off"}" data-slot="${id}">
+    <div class="ns-row"><div><div class="ns-title">${title}</div><div class="ns-sub">${sub}</div></div>
+      <button type="button" class="sw${s.on ? " on" : ""}" data-act="on" aria-label="Включить"></button></div>
+    <div class="ns-body">
+      <div class="ns-row"><span class="ns-sub">с</span><input type="time" data-act="from" value="${esc(s.from)}"><span class="ns-sub">до</span><input type="time" data-act="to" value="${esc(s.to)}"></div>
+      <div class="days">${DAY.map((d, i) => `<button type="button" data-act="day" data-d="${i + 1}" class="${s.days.includes(i + 1) ? "on" : ""}">${d}</button>`).join("")}</div>
+      ${bad}
+    </div></div>`;
+}
+function renderNotif() {
+  const W = STOPS[work].name;
+  const walk = (k, label) => `<div class="ns-row"><span>${label}</span><div class="step">
+    <button type="button" data-act="walk" data-k="${k}" data-v="-1" aria-label="Меньше">−</button><b>${ns[k]} мин</b>
+    <button type="button" data-act="walk" data-k="${k}" data-v="1" aria-label="Больше">+</button></div></div>`;
+  $("nsBody").innerHTML =
+    (ns.notifAllowed === false ? `<div class="ns-warn">Уведомления пока не разрешены — телефон спросит, когда включишь расписание.</div>` : "") +
+    slotHtml("morning", "Утро", `Schanz → ${W}`) +
+    slotHtml("evening", "Вечер", `${W} → Schanz`) +
+    `<div class="ns-card"><div class="ns-title">Дорога до остановки</div>${walk("walkHome", "от дома")}${walk("walkWork", "от работы")}
+      <div class="ns-row"><div><div>Сигнал «Пора выходить»</div><div class="ns-sub">с вибрацией — придёт и на часы</div></div>
+        <button type="button" class="sw${ns.leave ? " on" : ""}" data-act="leave" aria-label="Сигнал"></button></div></div>
+     <button type="button" class="ns-test" data-act="test">Проверить уведомление</button>
+     <div class="ns-sub" style="padding:0 4px 4px">В это время приложение само следит за автобусами: в шторке — ближайший рейс с обратным отсчётом, а когда пора выходить — сигнал. Работа — остановка, выбранная на главном экране.</div>`;
+}
+function openNotif() {
+  if (!AND || !nsLoad()) return;
+  renderNotif();
+  $("notif").hidden = false;
+  if (!notifOpen) { notifOpen = true; try { history.pushState({ notif: true }, ""); } catch {} }
+}
+function closeNotif(fromBack) {
+  if (!notifOpen) return;
+  notifOpen = false; $("notif").hidden = true;
+  if (!fromBack && history.state && history.state.notif) { try { history.back(); } catch {} }
+}
+window.onAndroidSettings = () => {
+  if (!AND) return;
+  try { const f = JSON.parse(AND.getSettings()); if (ns) ns.notifAllowed = f.notifAllowed; else ns = f; } catch {}
+  if (notifOpen) renderNotif();
+  renderBell();
+};
+$("bellBtn").addEventListener("click", () => { lastTouch = Date.now(); openNotif(); });
+$("notif").addEventListener("click", e => {
+  if (e.target.closest("[data-nclose]") || e.target === $("notif")) { closeNotif(); return; }
+  const b = e.target.closest("[data-act]");
+  if (!b || b.tagName === "INPUT") return;
+  const card = b.closest("[data-slot]"), s = card ? ns[card.dataset.slot] : null, act = b.dataset.act;
+  if (act === "on") s.on = !s.on;
+  else if (act === "day") { const d = +b.dataset.d; s.days = s.days.includes(d) ? s.days.filter(x => x !== d) : [...s.days, d].sort(); }
+  else if (act === "walk") ns[b.dataset.k] = Math.max(0, Math.min(30, (ns[b.dataset.k] || 0) + (+b.dataset.v)));
+  else if (act === "leave") ns.leave = !ns.leave;
+  else if (act === "test") { try { AND.testNotify(); } catch {} b.textContent = "Отправлено — смотри шторку и часы"; return; }
+  nsSave(); renderNotif();
+});
+$("notif").addEventListener("change", e => {
+  const inp = e.target;
+  if (inp.tagName !== "INPUT") return;
+  const s = ns[inp.closest("[data-slot]").dataset.slot];
+  s[inp.dataset.act] = inp.value;
+  nsSave(); renderNotif();
+});
+if (AND) { nsLoad(); renderBell(); try { AND.setWork(work); } catch {} }
 
 // ===== Выбор персонажа =====
 let pickerOpen = false;
