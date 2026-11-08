@@ -80,6 +80,15 @@ jobs:
         with:
           name: emulator-shots
           path: shots/
+      - name: Screenshots to ci-shots branch
+        if: always()
+        env:
+          TOKEN: ${{ github.token }}
+        run: |
+          cd shots && rm -f logcat-full.txt
+          git init -q && git checkout -q -b ci-shots && git add -A
+          git -c user.name=ci -c user.email=ci@localhost commit -qm "emulator shots, run ${{ github.run_number }}"
+          git push -q -f "https://x-access-token:${TOKEN}@github.com/${{ github.repository }}.git" ci-shots
 
   release:
     needs: [build, test]
