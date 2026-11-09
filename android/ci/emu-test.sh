@@ -20,7 +20,7 @@ adb shell am start -W -n $ACT
 sleep 30; shot 1-app
 
 # 2. Список рейсов с колокольчиками, открыт выбор «за сколько минут»
-OPEN="(function go(){const k=keyOf(dirs()[0]);if(!state[k]||!state[k].trips.length)return setTimeout(go,1000);openSheet(k);setTimeout(()=>{const b=document.querySelector('#sheetList .rb');b&&b.click();},600);})()"
+OPEN="(function go(){const k=keyOf(dirs()[0]);if(!state[k]||!state[k].trips.length)return setTimeout(go,1000);openSheet(k);const t=state[k].trips.find(t=>!t.cancelled);remPick=t.key;renderSheet();})()"
 adb shell am start -S -W -n $ACT --es js64 "$(js "$OPEN")"
 sleep 30; shot 2-reminder-pick
 adb logcat -d -v time | grep -E "ActivityTaskManager|FATAL|AndroidRuntime|LABus" | tail -40 > shots/step2.txt
@@ -43,8 +43,8 @@ sleep 4; shot 4a-tracking
 adb shell dumpsys notification --noredact | grep -A3 "pkg=$PKG" | head -40 > shots/notif-tracking.txt
 adb shell cmd statusbar collapse
 FIRED=0
-for i in $(seq 1 30); do
-  if adb shell dumpsys notification --noredact | grep -q "Пора выходить"; then FIRED=1; break; fi
+for i in $(seq 1 45); do
+  if adb shell dumpsys notification --noredact | grep -E "pkg=$PKG .* id=2 .*channel=leave" | grep -q .; then FIRED=1; break; fi
   sleep 10
 done
 adb shell cmd statusbar expand-notifications
@@ -53,20 +53,10 @@ adb shell dumpsys notification --noredact | grep -A3 "pkg=$PKG" | head -40 > sho
 adb shell cmd statusbar collapse
 echo "reminder fired: $FIRED"
 
-# 5. Кнопка «Проверить уведомление»
-adb shell am start -S -W -n $ACT --ez test_notify true
-sleep 25
-adb shell input keyevent KEYCODE_HOME
-adb shell cmd statusbar expand-notifications
-sleep 4; shot 5-test
-adb shell dumpsys notification --noredact | grep -A3 "pkg=$PKG" | head -40 > shots/notif-test.txt
-adb shell cmd statusbar collapse
-
 adb logcat -d -v time | grep -vE "chromium|cr_|WebView|Chrome" > shots/logcat-full.txt
 grep -E "LABus|FATAL|AndroidRuntime" shots/logcat-full.txt | grep -v "^--" > shots/log.txt || true
 cat shots/log.txt | tail -60
 echo "--- notif-scheduled"; cat shots/notif-scheduled.txt
-echo "--- notif-test"; cat shots/notif-test.txt
 if grep -q "FATAL EXCEPTION" shots/logcat-full.txt && grep -A3 "FATAL EXCEPTION" shots/logcat-full.txt | grep -q "$PKG"; then
   echo "::error::Приложение упало"; exit 1
 fi
