@@ -19,11 +19,11 @@ adb logcat -G 16M; adb logcat -c
 adb shell am start -W -n $ACT
 sleep 30; shot 1-app
 
-# 2. Панель уведомлений
-adb shell am start -S -W -n $ACT --es js64 "$(js 'openNotif()')"
-sleep 25; shot 2-settings
-adb logcat -d -v time | grep -E "ActivityTaskManager|ActivityManager|FATAL|AndroidRuntime|LABus|crash|Crash|Render|chromium.*(Error|FATAL)|Kill|kill|died|ANR" | tail -80 > shots/step2.txt
-
+# 2. Список рейсов с колокольчиками, открыт выбор «за сколько минут»
+OPEN="(function go(){const k=keyOf(dirs()[0]);if(!state[k]||!state[k].trips.length)return setTimeout(go,1000);openSheet(k);setTimeout(()=>{const b=document.querySelector('#sheetList .rb');b&&b.click();},600);})()"
+adb shell am start -S -W -n $ACT --es js64 "$(js "$OPEN")"
+sleep 30; shot 2-reminder-pick
+adb logcat -d -v time | grep -E "ActivityTaskManager|FATAL|AndroidRuntime|LABus" | tail -40 > shots/step2.txt
 # 3. Предпросмотр виджета
 adb shell am start -S -W -n $ACT --ez preview true
 sleep 25; shot 3-widget
@@ -33,18 +33,25 @@ sleep 3
 adb shell am start -S -W -n $ACT --ez preview true
 sleep 25; shot 3b-widget-kaiserplatz
 
-# 4. Окно «утро» прямо сейчас (по времени Аахена) → табло должно запуститься само, через будильник
-FROM=$(TZ=Europe/Berlin date -d '-2 min' +%H:%M)
-TO=$(TZ=Europe/Berlin date -d '+25 min' +%H:%M)
-SET="LABusAndroid.saveSettings(JSON.stringify({morning:{on:true,from:'$FROM',to:'$TO',days:[1,2,3,4,5,6,7]},evening:{on:false,from:'16:30',to:'17:30',days:[1,2,3,4,5]},walkHome:4,walkWork:4,leave:true}))"
+# 4. Напоминание о ближайшем рейсе (через ~1–2 мин): сначала слежение в шторке, потом «Пора выходить»
+SET="(function go(){const d=dirs()[0],k=keyOf(d);if(!state[k]||!state[k].trips.length)return setTimeout(go,1000);const t=state[k].trips.find(t=>!t.cancelled&&new Date(t.dep)-Date.now()>150000);if(!t)return;const m=Math.floor((new Date(t.dep)-Date.now())/60000);LABusAndroid.setReminder(JSON.stringify({key:t.key,line:t.line,from:d.from,to:d.to,dep:new Date(t.dep).getTime(),depSched:new Date(t.depSched||t.dep).getTime(),track:t.track||'',lead:Math.max(1,m-1)}));})()"
 adb shell am start -S -W -n $ACT --es js64 "$(js "$SET")"
-sleep 40
+sleep 30
 adb shell input keyevent KEYCODE_HOME
 adb shell cmd statusbar expand-notifications
-sleep 4; shot 4-scheduled
-adb shell dumpsys notification --noredact | grep -A3 "pkg=$PKG" | head -40 > shots/notif-scheduled.txt
-adb shell dumpsys alarm | grep -B1 -A4 "$PKG" | head -60 > shots/alarms.txt
+sleep 4; shot 4a-tracking
+adb shell dumpsys notification --noredact | grep -A3 "pkg=$PKG" | head -40 > shots/notif-tracking.txt
 adb shell cmd statusbar collapse
+FIRED=0
+for i in $(seq 1 30); do
+  if adb shell dumpsys notification --noredact | grep -q "Пора выходить"; then FIRED=1; break; fi
+  sleep 10
+done
+adb shell cmd statusbar expand-notifications
+sleep 4; shot 4b-reminder
+adb shell dumpsys notification --noredact | grep -A3 "pkg=$PKG" | head -40 > shots/notif-scheduled.txt
+adb shell cmd statusbar collapse
+echo "reminder fired: $FIRED"
 
 # 5. Кнопка «Проверить уведомление»
 adb shell am start -S -W -n $ACT --ez test_notify true
@@ -60,9 +67,8 @@ grep -E "LABus|FATAL|AndroidRuntime" shots/logcat-full.txt | grep -v "^--" > sho
 cat shots/log.txt | tail -60
 echo "--- notif-scheduled"; cat shots/notif-scheduled.txt
 echo "--- notif-test"; cat shots/notif-test.txt
-echo "--- alarms"; cat shots/alarms.txt
 if grep -q "FATAL EXCEPTION" shots/logcat-full.txt && grep -A3 "FATAL EXCEPTION" shots/logcat-full.txt | grep -q "$PKG"; then
   echo "::error::Приложение упало"; exit 1
 fi
-grep -q "pkg=$PKG" shots/notif-scheduled.txt || { echo "::error::Табло по расписанию не появилось"; exit 1; }
+[ "$FIRED" = "1" ] || { echo "::error::Напоминание «Пора выходить» не пришло"; exit 1; }
 echo "OK"

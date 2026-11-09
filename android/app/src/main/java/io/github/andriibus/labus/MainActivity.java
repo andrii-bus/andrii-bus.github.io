@@ -105,7 +105,7 @@ public class MainActivity extends Activity {
         wv.loadUrl(SITE);
 
         if (ciMode() && in.getBooleanExtra("test_notify", false)) BusService.start(this, "test");
-        Scheduler.reschedule(this, true);
+        Scheduler.reschedule(this);
         checkUpdate();
     }
 
@@ -178,20 +178,39 @@ public class MainActivity extends Activity {
 
     /** Мост для веб-части: настройки уведомлений, выбор работы, проверка. */
     final class Bridge {
-        @JavascriptInterface public String getSettings() {
-            try { return Prefs.of(MainActivity.this).settings().put("notifAllowed", notifAllowed()).toString(); }
-            catch (Exception e) { return "{}"; }
+        /** Активное напоминание (JSON) или пустая строка. */
+        @JavascriptInterface public String getReminder() {
+            JSONObject r = Prefs.of(MainActivity.this).reminder();
+            return r == null ? "" : r.toString();
         }
 
-        @JavascriptInterface public void saveSettings(String json) {
-            Prefs.of(MainActivity.this).saveSettings(json);
-            Scheduler.reschedule(getApplicationContext(), true);
+        @JavascriptInterface public String getLead() { return String.valueOf(Prefs.of(MainActivity.this).lead()); }
+
+        /** Напомнить о рейсе: {key, line, from, to, dep, depSched, track, lead}. Одно активное напоминание. */
+        @JavascriptInterface public void setReminder(String json) {
             try {
-                JSONObject s = new JSONObject(json);
-                boolean any = s.optJSONObject("morning") != null && s.optJSONObject("morning").optBoolean("on")
-                        || s.optJSONObject("evening") != null && s.optJSONObject("evening").optBoolean("on");
-                if (any) runOnUiThread(MainActivity.this::askNotifPermission);
-            } catch (Exception ignored) { }
+                JSONObject in = new JSONObject(json);
+                int lead = Math.max(1, Math.min(30, in.optInt("lead", 5)));
+                String from = in.optString("from"), to = in.optString("to");
+                if (!Api.STOPS.containsKey(from) || !Api.STOPS.containsKey(to) || in.optLong("dep") <= 0) return;
+                JSONObject r = new JSONObject()
+                        .put("key", in.optString("key")).put("line", in.optString("line"))
+                        .put("from", from).put("to", to)
+                        .put("dep", in.optLong("dep")).put("depSched", in.optLong("depSched", in.optLong("dep")))
+                        .put("track", in.optString("track")).put("lead", lead).put("set", System.currentTimeMillis());
+                Prefs p = Prefs.of(MainActivity.this);
+                p.setReminder(r);
+                p.setLead(lead);
+                Scheduler.reschedule(getApplicationContext());
+                runOnUiThread(MainActivity.this::askNotifPermission);
+            } catch (Exception e) {
+                Log.w(TAG, "setReminder: " + e);
+            }
+        }
+
+        @JavascriptInterface public void cancelReminder() {
+            Prefs.of(MainActivity.this).clearReminder();
+            Scheduler.reschedule(getApplicationContext());
         }
 
         @JavascriptInterface public void setWork(String w) {

@@ -6,61 +6,32 @@ import android.content.Context;
 import android.content.Intent;
 import android.util.Log;
 
-import org.json.JSONArray;
 import org.json.JSONObject;
 
 import java.time.Instant;
 import java.time.LocalDate;
-import java.time.LocalTime;
-import java.time.ZonedDateTime;
-import java.util.HashSet;
-import java.util.Set;
 
-/** Окна поездок («утро», «вечер») и будильники для них. */
+/**
+ * Будильник для напоминания о конкретном рейсе.
+ * Слежение начинается за 15 минут до «момента напоминания» (рейс может опаздывать),
+ * а само напоминание приходит, когда до фактического отправления остаётся выбранное число минут.
+ */
 public final class Scheduler {
+    static final String ACTION_REMIND = "io.github.andriibus.labus.REMIND";
+    /** Старые будильники «утро/вечер» из первых версий — только чтобы их снять. */
     static final String ACTION_WINDOW = "io.github.andriibus.labus.WINDOW";
-    static final String[] SLOTS = {"morning", "evening"};
-
-    static LocalTime time(String s, LocalTime def) {
-        try { return LocalTime.parse(s); } catch (Exception e) { return def; }
-    }
-
-    /** Первое окно, которое ещё не закончилось к моменту {@code after}: [начало, конец] или null. */
-    static long[] nextWindow(Context ctx, String slot, long after) {
-        Prefs p = Prefs.of(ctx);
-        JSONObject s = p.settings().optJSONObject(slot);
-        if (s == null || !s.optBoolean("on")) return null;
-        LocalTime from = time(s.optString("from"), LocalTime.of(7, 30));
-        LocalTime to = time(s.optString("to"), LocalTime.of(8, 30));
-        if (!to.isAfter(from)) return null;
-        Set<Integer> days = new HashSet<>();
-        JSONArray d = s.optJSONArray("days");
-        if (d != null) for (int i = 0; i < d.length(); i++) days.add(d.optInt(i));
-        if (days.isEmpty()) return null;
-        String skip = p.getString("skip:" + slot, "");
-        LocalDate today = Instant.ofEpochMilli(after).atZone(Prefs.ZONE).toLocalDate();
-        for (int i = 0; i < 9; i++) {
-            LocalDate day = today.plusDays(i);
-            if (!days.contains(day.getDayOfWeek().getValue())) continue;
-            if (day.toString().equals(skip)) continue;
-            long st = ZonedDateTime.of(day, from, Prefs.ZONE).toInstant().toEpochMilli();
-            long en = ZonedDateTime.of(day, to, Prefs.ZONE).toInstant().toEpochMilli();
-            if (after < en) return new long[]{st, en};
-        }
-        return null;
-    }
-
-    static boolean isActive(Context ctx, String slot, long now) {
-        long[] w = nextWindow(ctx, slot, now);
-        return w != null && now >= w[0] - 60_000 && now < w[1];
-    }
+    static final long TRACK_BEFORE_MS = 15 * 60_000L;
 
     static String today() { return LocalDate.now(Prefs.ZONE).toString(); }
 
-    static PendingIntent windowIntent(Context ctx, String slot) {
-        Intent i = new Intent(ctx, Receiver.class).setAction(ACTION_WINDOW).putExtra("slot", slot);
-        return PendingIntent.getBroadcast(ctx, "evening".equals(slot) ? 2 : 1, i,
-                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+    static PendingIntent remindIntent(Context ctx) {
+        Intent i = new Intent(ctx, Receiver.class).setAction(ACTION_REMIND);
+        return PendingIntent.getBroadcast(ctx, 3, i, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+    }
+
+    static PendingIntent legacyWindow(Context ctx, int code) {
+        Intent i = new Intent(ctx, Receiver.class).setAction(ACTION_WINDOW);
+        return PendingIntent.getBroadcast(ctx, code, i, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
     }
 
     static void setExact(AlarmManager am, int type, long at, PendingIntent pi) {
@@ -68,27 +39,22 @@ public final class Scheduler {
         catch (SecurityException e) { am.setAndAllowWhileIdle(type, at, pi); }
     }
 
-    /**
-     * Ставит будильники на начало следующих окон.
-     * @param startActive если окно идёт прямо сейчас — запустить его (через пару секунд);
-     *                    иначе будильник ставится на следующее окно после текущего.
-     */
-    public static void reschedule(Context ctx, boolean startActive) {
+    /** Ставит (или снимает) будильник напоминания. Вызывается при любом изменении и после перезагрузки. */
+    public static void reschedule(Context ctx) {
         AlarmManager am = ctx.getSystemService(AlarmManager.class);
+        am.cancel(legacyWindow(ctx, 1));
+        am.cancel(legacyWindow(ctx, 2));
+        PendingIntent pi = remindIntent(ctx);
+        am.cancel(pi);
+        Prefs p = Prefs.of(ctx);
+        JSONObject r = p.reminder();
+        if (r == null) return;
         long now = System.currentTimeMillis();
-        for (String slot : SLOTS) {
-            PendingIntent pi = windowIntent(ctx, slot);
-            am.cancel(pi);
-            long[] w = nextWindow(ctx, slot, now);
-            if (w == null) continue;
-            boolean activeNow = now >= w[0] - 60_000;
-            if (activeNow && !startActive) {
-                w = nextWindow(ctx, slot, w[1]);
-                if (w == null) continue;
-            }
-            long at = Math.max(w[0], now + 1500);
-            setExact(am, AlarmManager.RTC_WAKEUP, at, pi);
-            Log.i("LABus", "окно " + slot + " → " + Instant.ofEpochMilli(at));
-        }
+        long dep = r.optLong("dep");
+        if (dep <= 0 || now > dep + 2 * 60_000) { p.clearReminder(); return; }
+        long alertAt = dep - r.optInt("lead", 5) * 60_000L;
+        long at = Math.max(now + 1500, alertAt - TRACK_BEFORE_MS);
+        setExact(am, AlarmManager.RTC_WAKEUP, at, pi);
+        Log.i("LABus", "напоминание " + r.optString("key") + ": слежение с " + Instant.ofEpochMilli(at));
     }
 }

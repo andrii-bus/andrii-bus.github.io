@@ -43,6 +43,17 @@ public final class Prefs {
         return w;
     }
 
+    // ===== Напоминание о конкретном рейсе (одно активное) =====
+    public JSONObject reminder() {
+        String s = sp.getString("reminder", null);
+        if (s == null) return null;
+        try { return new JSONObject(s); } catch (JSONException e) { return null; }
+    }
+    public void setReminder(JSONObject r) { sp.edit().putString("reminder", r.toString()).apply(); }
+    public void clearReminder() { sp.edit().remove("reminder").apply(); }
+    public int lead() { return sp.getInt("lead", 5); }
+    public void setLead(int m) { sp.edit().putInt("lead", m).apply(); }
+
     static JSONObject slotDefault(String from, String to) throws JSONException {
         return new JSONObject().put("on", false).put("from", from).put("to", to)
                 .put("days", new JSONArray().put(1).put(2).put(3).put(4).put(5));

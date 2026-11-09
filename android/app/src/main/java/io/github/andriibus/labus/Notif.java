@@ -21,13 +21,13 @@ final class Notif {
 
     static void channels(Context c) {
         NotificationManager nm = c.getSystemService(NotificationManager.class);
-        NotificationChannel trip = new NotificationChannel(CH_TRIP, "Табло поездки", NotificationManager.IMPORTANCE_DEFAULT);
-        trip.setDescription("Ближайший автобус и обратный отсчёт во время поездки");
+        NotificationChannel trip = new NotificationChannel(CH_TRIP, "Слежение за рейсом", NotificationManager.IMPORTANCE_DEFAULT);
+        trip.setDescription("Обратный отсчёт до выбранного автобуса");
         trip.setSound(null, null);
         trip.enableVibration(true);
         trip.setShowBadge(false);
         NotificationChannel leave = new NotificationChannel(CH_LEAVE, "Пора выходить", NotificationManager.IMPORTANCE_HIGH);
-        leave.setDescription("Сигнал, когда пора выходить к остановке");
+        leave.setDescription("Напоминание о выбранном автобусе");
         leave.enableVibration(true);
         leave.setVibrationPattern(new long[]{0, 400, 200, 400, 200, 400});
         nm.createNotificationChannels(Arrays.asList(trip, leave));
@@ -43,24 +43,22 @@ final class Notif {
         return PendingIntent.getService(c, 1, i, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
     }
 
-    /** Постоянное уведомление-табло (с обратным отсчётом до отправления, если when > 0). */
-    static Notification trip(Context c, String title, String text, long when) {
+    /** Постоянное уведомление во время слежения за рейсом. */
+    static Notification trip(Context c, String title, String text, boolean cancelAction) {
         Notification.Builder b = new Notification.Builder(c, CH_TRIP)
                 .setSmallIcon(R.drawable.ic_stat_bus)
                 .setContentTitle(title)
                 .setContentText(text)
                 .setOnlyAlertOnce(true)
                 .setOngoing(true)
+                .setShowWhen(false)
                 .setColor(COLOR)
                 .setCategory(Notification.CATEGORY_STATUS)
                 .setVisibility(Notification.VISIBILITY_PUBLIC)
-                .setContentIntent(open(c))
-                .addAction(new Notification.Action.Builder(
-                        Icon.createWithResource(c, R.drawable.ic_stat_bus), "Стоп на сегодня", stopToday(c)).build());
-        if (when > 0) {
-            b.setWhen(when).setShowWhen(true).setUsesChronometer(true).setChronometerCountDown(true);
-        } else {
-            b.setShowWhen(false);
+                .setContentIntent(open(c));
+        if (cancelAction) {
+            b.addAction(new Notification.Action.Builder(
+                    Icon.createWithResource(c, R.drawable.ic_stat_bus), "Отменить напоминание", stopToday(c)).build());
         }
         return b.build();
     }
