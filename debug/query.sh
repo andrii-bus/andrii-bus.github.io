@@ -15,9 +15,10 @@ trip() {
      --data-urlencode "maxChanges=0" --data-urlencode "calcNumberOfTrips=12" --data-urlencode "useRealtime=1" \
      --data-urlencode "excludedMeans=checkbox" --data-urlencode "exclMOT_0=1" --data-urlencode "exclMOT_1=1" --data-urlencode "exclMOT_2=1" --data-urlencode "exclMOT_3=1" --data-urlencode "exclMOT_4=1" \
      --data-urlencode "useProxFootSearch=0" --data-urlencode "routeType=leasttime")
-  echo "bytes ${#R}"
+  echo "bytes ${#R}"; [ ${#R} -lt 2000 ] && echo "$R" | head -c 600
   echo "$R" | jq -r '.journeys[]? | [.legs[] | select(.transportation.product.class? != 99 and .transportation.product.class? != 100)] | select(length==1) | .[0] |
     "\(.transportation.number)\tdep=\(.origin.departureTimePlanned) est=\(.origin.departureTimeEstimated // "-")\tarr=\(.destination.arrivalTimePlanned) est=\(.destination.arrivalTimeEstimated // "-")\tfrom=\(.origin.name) [\(.origin.properties.platformName // .origin.properties.platform // "")]\tto=\(.destination.name)\tdir=\(.transportation.destination.name)\tstatus=\(.realtimeStatus // [] | join(","))\tid=\(.transportation.properties.globalId // "")"'
 }
-trip de:05334:1015 de:05334:2825 0735
-trip de:05334:1015 de:05334:1000 0735
+trip de:05334:1015 de:05334:1001 0735
+trip de:05334:1015 de:05334:1011 0735
+trip de:05334:1001 de:05334:1015 1600
