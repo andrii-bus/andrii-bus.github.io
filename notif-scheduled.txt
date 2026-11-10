@@ -1,0 +1,7 @@
+    NotificationRecord(0x0c5af9a9: pkg=io.github.andriibus.labus user=UserHandle{0} id=2 tag=null importance=4 key=0|io.github.andriibus.labus|2|null|10192: Notification(channel=leave shortcut=null contentView=null vibrate=null sound=null defaults=0x0 flags=0x10 color=0xff6f80d9 category=reminder vis=PUBLIC))
+      uid=10192 userId=0
+      opPkg=io.github.andriibus.labus
+      icon=Icon(typ=RESOURCE pkg=io.github.andriibus.labus id=0x7f020002)
+      flags=0x10
+      originalFlags=0x10
+      pri=0
