@@ -229,6 +229,17 @@ public class MainActivity extends Activity {
         }
 
         @JavascriptInterface public String version() { return BuildConfig.VERSION_NAME; }
+
+        /** Отправления из справочной NRW для веб-части; ответ приходит в window.__efaDone(id, json). */
+        @JavascriptInterface public void efa(String id, String stopKey) {
+            new Thread(() -> {
+                String json;
+                try { json = Api.efaDepartures(stopKey).toString(); }
+                catch (Exception e) { Log.w(TAG, "efa: " + e.getMessage()); json = "null"; }
+                final String js = "window.__efaDone && window.__efaDone(" + JSONObject.quote(id) + "," + JSONObject.quote(json) + ")";
+                runOnUiThread(() -> { if (wv != null) wv.evaluateJavascript(js, null); });
+            }, "labus-efa").start();
+        }
     }
 
     // ===== Проверка новой версии (не чаще раза в 6 часов) =====

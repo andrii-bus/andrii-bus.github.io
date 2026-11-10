@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#0e0e10">
-<meta name="app-version" content="bus-v34">
+<meta name="app-version" content="bus-v35">
 <title>LA Bus</title>
 <link rel="manifest" href="manifest.json">
 <meta name="mobile-web-app-capable" content="yes">
@@ -340,7 +340,7 @@ async function resolveStop(key, force) {
 // Один запрос. Рейс берём, только если он после нашей остановки доезжает до остановки назначения.
 async function boardTrips(fromId, fromKey, toKey, time) {
   const params = new URLSearchParams({
-    stopId: fromId, time, n: "30", window: String(WINDOW_MIN * 60), mode: "BUS", fetchStops: "true",
+    stopId: fromId, time, n: "80", window: String(WINDOW_MIN * 60), mode: "BUS", fetchStops: "true",
   });
   const data = await apiGet("stoptimes", params);
   const list = (data && data.stopTimes) || [];
@@ -417,6 +417,59 @@ function finalize(out) {
   const limit = Math.max(2 * min, min + 8);
   return uniq.filter(t => !min || ride(t) <= limit)
              .sort((a, b) => new Date(a.dep) - new Date(b.dep));
+}
+
+// ===== Дополнение из справочной NRW (EFA VRR) — только в Android-приложении =====
+// В открытых данных Transitous иногда нет отдельных рейсов (например, 24 Schanz → Bushof в 07:41).
+// Справочная NRW знает все отправления, но не говорит, через какие остановки едет рейс.
+// Поэтому добавляем рейс из NRW, только если такой же «шаблон» (линия + стоянка + конечная)
+// уже точно доезжает до нужной остановки по данным Transitous; прибытие — по времени в пути этого шаблона.
+const NRW = !!(window.LABusAndroid && typeof window.LABusAndroid.efa === "function");
+const efaCalls = {};
+let efaSeq = 0;
+window.__efaDone = (id, s) => { const f = efaCalls[id]; delete efaCalls[id]; if (f) f(s); };
+function efaDeps(stopKey) {
+  return new Promise(res => {
+    const id = "e" + (++efaSeq);
+    efaCalls[id] = s => { try { res(JSON.parse(s)); } catch { res(null); } };
+    try { window.LABusAndroid.efa(id, stopKey); } catch { delete efaCalls[id]; res(null); return; }
+    setTimeout(() => { if (efaCalls[id]) { delete efaCalls[id]; res(null); } }, 15000);
+  });
+}
+const shortTrack = s => String(s || "").replace(/\s*\(.*$/, "").trim();
+const normDest = s => String(s || "").toLowerCase().replace(/aachen/g, "").replace(/[^a-zа-яäöüß0-9]+/g, "");
+const patKey = (line, track, dest) => line + "|" + shortTrack(track) + "|" + normDest(dest);
+async function augmentNrw(a, b, trips) {
+  const deps = await efaDeps(a);
+  if (!Array.isArray(deps) || !deps.length) return trips;
+  const pk = "pat:" + a + ">" + b;
+  let pats = {};
+  try { pats = JSON.parse(localStorage.getItem(pk) || "{}") || {}; } catch {}
+  const now = Date.now();
+  const unmatched = [];
+  for (const e of deps) {
+    const plan = new Date(e.plan).getTime();
+    const t = trips.find(t => t.line === e.line && Math.abs(new Date(t.depSched).getTime() - plan) <= 60_000);
+    if (t) {
+      const ride = Math.round((new Date(t.arr) - new Date(t.dep)) / 60000);
+      if (ride > 0) pats[patKey(e.line, e.platform, e.dest)] = { ride, via: t.via, t: now };
+    } else unmatched.push(e);
+  }
+  for (const k of Object.keys(pats)) if (now - pats[k].t > 60 * 86_400_000) delete pats[k];   // забываем через 60 дней
+  try { localStorage.setItem(pk, JSON.stringify(pats)); } catch {}
+  const add = [];
+  for (const e of unmatched) {
+    const p = pats[patKey(e.line, e.platform, e.dest)];
+    if (!p) continue;
+    const dep = e.est || e.plan;
+    add.push({
+      key: e.line + "|" + e.plan, line: e.line, dep, depSched: e.plan,
+      arr: new Date(new Date(dep).getTime() + p.ride * 60000).toISOString(),
+      realTime: !!e.est, cancelled: !!e.cancelled, headsign: e.dest, track: shortTrack(e.platform),
+      via: p.via, nrw: true,
+    });
+  }
+  return add.length ? finalize(trips.concat(add)) : trips;
 }
 
 
@@ -722,6 +775,7 @@ async function doLoad(k) {
         trips = await planTrips(a, b, time);         // запасной способ
       }
     }
+    if (NRW) { try { trips = await augmentNrw(a, b, trips); } catch (e) { console.warn("NRW:", e); } }
     state[k] = { trips, at: Date.now() };
     store.set("cache3:" + k, state[k]);
     lastError = null; setBanner("");

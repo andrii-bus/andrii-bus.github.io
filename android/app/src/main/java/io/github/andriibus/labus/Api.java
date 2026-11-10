@@ -244,7 +244,7 @@ public final class Api {
         Map<String, String> params = new LinkedHashMap<>();
         params.put("stopId", fromId);
         params.put("time", time);
-        params.put("n", "30");
+        params.put("n", "80");
         params.put("window", String.valueOf(WINDOW_MIN * 60));
         params.put("mode", "BUS");
         params.put("fetchStops", "true");
@@ -393,6 +393,8 @@ public final class Api {
                 trips = planTrips(ctx, from, to, time);
             }
         }
+        try { trips = augmentNrw(ctx, from, to, trips); }
+        catch (Exception e) { Log.w(TAG, "NRW: " + e.getMessage()); }
         Board b = new Board(trips, System.currentTimeMillis());
         save(ctx, from, to, b);
         return b;
@@ -434,4 +436,122 @@ public final class Api {
         for (Trip t : b.trips) if (!t.cancelled && t.dep - now >= minLeadMs) out.add(t);
         return out;
     }
+
+    // ===== Дополнение из справочной NRW (EFA VRR) =====
+    // В Transitous иногда нет отдельных рейсов. Справочная NRW знает все отправления, но не маршрут,
+    // поэтому рейс добавляется, только если такой же «шаблон» (линия + стоянка + конечная) по данным
+    // Transitous точно доезжает до нужной остановки; прибытие — по времени в пути этого шаблона.
+    static final String EFA = "https://efa.vrr.de/standard/XML_DM_REQUEST";
+    static final Map<String, String> EFA_IDS = new HashMap<>();
+    static {
+        EFA_IDS.put("schanz", "de:05334:1015");
+        EFA_IDS.put("bushof", "de:05334:1001");
+        EFA_IDS.put("kaiserplatz", "de:05334:1011");
+    }
+
+    /** Отправления с остановки по справочной NRW: [{line, plan, est, platform, dest, cancelled}]. */
+    public static JSONArray efaDepartures(String stopKey) throws IOException {
+        String id = EFA_IDS.get(stopKey);
+        if (id == null) return new JSONArray();
+        java.time.ZonedDateTime t = java.time.ZonedDateTime.now(Prefs.ZONE).minusMinutes(1);
+        Map<String, String> q = new LinkedHashMap<>();
+        q.put("outputFormat", "rapidJSON");
+        q.put("type_dm", "stop");
+        q.put("name_dm", id);
+        q.put("mode", "direct");
+        q.put("useRealtime", "1");
+        q.put("limit", "bushof".equals(stopKey) ? "120" : "60");
+        q.put("itdDate", String.format(java.util.Locale.ROOT, "%04d%02d%02d", t.getYear(), t.getMonthValue(), t.getDayOfMonth()));
+        q.put("itdTime", String.format(java.util.Locale.ROOT, "%02d%02d", t.getHour(), t.getMinute()));
+        q.put("itdDateTimeDepArr", "dep");
+        q.put("excludedMeans", "checkbox");
+        for (int i = 0; i <= 4; i++) q.put("exclMOT_" + i, "1");   // без поездов
+        Object data = getJSON(EFA + "?" + query(q));
+        JSONArray ev = data instanceof JSONObject ? ((JSONObject) data).optJSONArray("stopEvents") : null;
+        JSONArray out = new JSONArray();
+        long until = System.currentTimeMillis() + (WINDOW_MIN + 5) * 60_000L;
+        if (ev != null) for (int i = 0; i < ev.length(); i++) {
+            JSONObject e = ev.optJSONObject(i);
+            if (e == null) continue;
+            JSONObject tr = e.optJSONObject("transportation");
+            String line = tr == null ? "" : tr.optString("number", "");
+            String plan = e.optString("departureTimePlanned", "");
+            if (line.isEmpty() || plan.isEmpty() || t(plan) > until) continue;
+            JSONObject loc = e.optJSONObject("location");
+            JSONObject props = loc == null ? null : loc.optJSONObject("properties");
+            JSONObject dest = tr.optJSONObject("destination");
+            boolean canc = e.optBoolean("isCancelled");
+            JSONArray rs = e.optJSONArray("realtimeStatus");
+            if (rs != null) for (int j = 0; j < rs.length(); j++) if (rs.optString(j).contains("CANCEL")) canc = true;
+            try {
+                out.put(new JSONObject().put("line", line).put("plan", plan)
+                        .put("est", e.isNull("departureTimeEstimated") ? JSONObject.NULL : e.optString("departureTimeEstimated"))
+                        .put("platform", props == null ? "" : props.optString("platform", ""))
+                        .put("dest", dest == null ? "" : dest.optString("name", ""))
+                        .put("cancelled", canc));
+            } catch (JSONException ignored) { }
+        }
+        return out;
+    }
+
+    static String shortTrack(String s) { return s == null ? "" : s.replaceAll("\\s*\\(.*$", "").trim(); }
+    static String normDest(String s) {
+        return s == null ? "" : s.toLowerCase(java.util.Locale.ROOT).replace("aachen", "").replaceAll("[^a-zа-яäöüß0-9]+", "");
+    }
+    static String patKey(String line, String track, String dest) { return line + "|" + shortTrack(track) + "|" + normDest(dest); }
+
+    static List<Trip> augmentNrw(Context ctx, String from, String to, List<Trip> trips) throws IOException, JSONException {
+        JSONArray deps = efaDepartures(from);
+        if (deps.length() == 0) return trips;
+        Prefs p = Prefs.of(ctx);
+        String pk = "pat:" + from + ">" + to;
+        JSONObject pats;
+        try { pats = new JSONObject(p.getString(pk, "{}")); } catch (JSONException e) { pats = new JSONObject(); }
+        long now = System.currentTimeMillis();
+        List<JSONObject> unmatched = new ArrayList<>();
+        for (int i = 0; i < deps.length(); i++) {
+            JSONObject e = deps.getJSONObject(i);
+            long plan = t(e.optString("plan"));
+            Trip m = null;
+            for (Trip x : trips) if (x.line.equals(e.optString("line")) && Math.abs(x.depSched - plan) <= 60_000) { m = x; break; }
+            if (m != null) {
+                long ride = Math.round((m.arr - m.dep) / 60000.0);
+                if (ride > 0) pats.put(patKey(e.optString("line"), e.optString("platform"), e.optString("dest")),
+                        new JSONObject().put("ride", ride).put("via", m.via).put("t", now));
+            } else unmatched.add(e);
+        }
+        List<String> old = new ArrayList<>();
+        for (java.util.Iterator<String> it = pats.keys(); it.hasNext(); ) {
+            String k = it.next();
+            JSONObject v = pats.optJSONObject(k);
+            if (v == null || now - v.optLong("t") > 60L * 86_400_000L) old.add(k);
+        }
+        for (String k : old) pats.remove(k);
+        p.putString(pk, pats.toString());
+        List<Trip> add = new ArrayList<>();
+        for (JSONObject e : unmatched) {
+            JSONObject pt = pats.optJSONObject(patKey(e.optString("line"), e.optString("platform"), e.optString("dest")));
+            if (pt == null) continue;
+            Trip tr = new Trip();
+            String plan = e.optString("plan");
+            String est = e.isNull("est") ? "" : e.optString("est");
+            tr.line = e.optString("line");
+            tr.key = tr.line + "|" + plan;
+            tr.depSched = t(plan);
+            tr.dep = est.isEmpty() ? tr.depSched : t(est);
+            tr.arr = tr.dep + pt.optLong("ride") * 60_000L;
+            tr.realTime = !est.isEmpty();
+            tr.cancelled = e.optBoolean("cancelled");
+            tr.headsign = e.optString("dest");
+            tr.track = shortTrack(e.optString("platform"));
+            tr.via = pt.optInt("via", 3);
+            add.add(tr);
+        }
+        if (add.isEmpty()) return trips;
+        List<Trip> all = new ArrayList<>(trips);
+        all.addAll(add);
+        Log.i(TAG, "NRW добавила рейсов: " + add.size() + " (" + from + ">" + to + ")");
+        return finish(all);
+    }
+
 }
