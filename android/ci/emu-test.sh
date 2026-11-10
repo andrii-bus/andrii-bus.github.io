@@ -34,7 +34,7 @@ adb shell am start -S -W -n $ACT --ez preview true
 sleep 25; shot 3b-widget-kaiserplatz
 
 # 4. Напоминание о ближайшем рейсе (через ~1–2 мин): сначала слежение в шторке, потом «Пора выходить»
-SET="(function go(){const d=dirs()[0],k=keyOf(d);if(!state[k]||!state[k].trips.length)return setTimeout(go,1000);const t=state[k].trips.find(t=>!t.cancelled&&new Date(t.dep)-Date.now()>150000);if(!t)return;const m=Math.floor((new Date(t.dep)-Date.now())/60000);LABusAndroid.setReminder(JSON.stringify({key:t.key,line:t.line,from:d.from,to:d.to,dep:new Date(t.dep).getTime(),depSched:new Date(t.depSched||t.dep).getTime(),track:t.track||'',lead:Math.max(1,m-1)}));})()"
+SET="(function go(){const d=dirs()[0],k=keyOf(d);if(!state[k]||!state[k].trips.length)return setTimeout(go,1000);const t=state[k].trips.find(t=>!t.cancelled&&new Date(t.dep)-Date.now()>150000);if(!t)return;const m=Math.floor((new Date(t.dep)-Date.now())/60000);LABusAndroid.setReminder(JSON.stringify({key:t.key,line:t.line,from:d.from,to:d.to,dep:new Date(t.dep).getTime(),depSched:new Date(t.depSched||t.dep).getTime(),track:t.track||'',lead:Math.min(30,m+1)}));})()"
 adb shell am start -S -W -n $ACT --es js64 "$(js "$SET")"
 sleep 30
 adb shell input keyevent KEYCODE_HOME
