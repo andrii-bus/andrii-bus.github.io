@@ -47,6 +47,8 @@ public final class Api {
     }
 
     static final Map<String, Stop> STOPS = new HashMap<>();
+    /** Все отправления с остановки по последнему ответу Transitous: {линия, план (мс), стоянка}. */
+    static final Map<String, List<String[]>> BOARD_SEEN = new java.util.concurrent.ConcurrentHashMap<>();
     static {
         STOPS.put("schanz", new Stop("schanz", "Schanz", "Schanz (Jakobstraße) Aachen", "schanz.*jakob"));
         STOPS.put("bushof", new Stop("bushof", "Bushof", "Bushof Aachen", "bushof"));
@@ -259,11 +261,17 @@ public final class Api {
         if (list.length() > 0 && !anyStops) throw new IOException("сервер не вернул следующие остановки");
         Stop from = STOPS.get(fromKey), to = STOPS.get(toKey);
         List<Trip> out = new ArrayList<>();
+        List<String[]> seen = new ArrayList<>();
         for (int i = 0; i < list.length(); i++) {
             JSONObject x = list.optJSONObject(i);
             if (x == null) continue;
             JSONObject p = x.optJSONObject("place");
             if (p == null || !from.is(str(p, "name"))) continue;
+            String sd = str(p, "scheduledDeparture");
+            if (sd.isEmpty()) sd = str(p, "departure");
+            String st = str(p, "track");
+            if (st.isEmpty()) st = str(p, "scheduledTrack");
+            seen.add(new String[]{str(x, "routeShortName"), String.valueOf(t(sd)), shortTrack(st)});
             if ("NOT_ALLOWED".equals(str(x, "pickupDropoffType"))) continue;
             JSONArray ns = x.optJSONArray("nextStops");
             int di = -1;
@@ -296,6 +304,7 @@ public final class Api {
             tr.via = di;
             out.add(tr);
         }
+        BOARD_SEEN.put(fromKey, seen);
         return finish(out);
     }
 
@@ -379,6 +388,7 @@ public final class Api {
     // ===== Загрузка направления с запасными путями и кэшем =====
     public static Board load(Context ctx, String from, String to) throws IOException {
         String time = Instant.ofEpochMilli(System.currentTimeMillis() - 60_000).toString();
+        BOARD_SEEN.remove(from);
         List<Trip> trips;
         try {
             trips = boardTrips(ctx, resolveStop(ctx, from, false), from, to, time);
@@ -501,10 +511,13 @@ public final class Api {
     static String patKey(String line, String track, String dest) { return line + "|" + shortTrack(track) + "|" + normDest(dest); }
 
     static List<Trip> augmentNrw(Context ctx, String from, String to, List<Trip> trips) throws IOException, JSONException {
+        List<String[]> seen = BOARD_SEEN.get(from);
+        if (seen == null) return trips;              // запасной способ — без сверки не добавляем
         JSONArray deps = efaDepartures(from);
         if (deps.length() == 0) return trips;
         Prefs p = Prefs.of(ctx);
-        String pk = "pat:" + from + ">" + to;
+        p.putString("pat:" + from + ">" + to, "{}");  // старые шаблоны могли быть ошибочными
+        String pk = "pat2:" + from + ">" + to;
         JSONObject pats;
         try { pats = new JSONObject(p.getString(pk, "{}")); } catch (JSONException e) { pats = new JSONObject(); }
         long now = System.currentTimeMillis();
@@ -512,13 +525,19 @@ public final class Api {
         for (int i = 0; i < deps.length(); i++) {
             JSONObject e = deps.getJSONObject(i);
             long plan = t(e.optString("plan"));
+            String line = e.optString("line"), tr0 = shortTrack(e.optString("platform"));
             Trip m = null;
-            for (Trip x : trips) if (x.line.equals(e.optString("line")) && Math.abs(x.depSched - plan) <= 60_000) { m = x; break; }
+            for (Trip x : trips) if (x.line.equals(line) && Math.abs(x.depSched - plan) <= 60_000 && shortTrack(x.track).equals(tr0)) { m = x; break; }
             if (m != null) {
                 long ride = Math.round((m.arr - m.dep) / 60000.0);
                 if (ride > 0) pats.put(patKey(e.optString("line"), e.optString("platform"), e.optString("dest")),
                         new JSONObject().put("ride", ride).put("via", m.via).put("t", now));
-            } else unmatched.add(e);
+            } else {
+                // рейс, который Transitous знает, но он не доезжает до цели (другое направление), не добавляем
+                boolean known = false;
+                for (String[] sv : seen) if (sv[0].equals(line) && Math.abs(Long.parseLong(sv[1]) - plan) <= 60_000 && sv[2].equals(tr0)) { known = true; break; }
+                if (!known) unmatched.add(e);
+            }
         }
         List<String> old = new ArrayList<>();
         for (java.util.Iterator<String> it = pats.keys(); it.hasNext(); ) {
@@ -546,6 +565,7 @@ public final class Api {
             tr.track = shortTrack(e.optString("platform"));
             tr.via = pt.optInt("via", 3);
             add.add(tr);
+            Log.i(TAG, "NRW +" + tr.line + " " + tr.track + " → " + tr.headsign + " (" + from + ">" + to + ")");
         }
         if (add.isEmpty()) return trips;
         List<Trip> all = new ArrayList<>(trips);

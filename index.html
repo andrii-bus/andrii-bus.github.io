@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#0e0e10">
-<meta name="app-version" content="bus-v35">
+<meta name="app-version" content="bus-v36">
 <title>LA Bus</title>
 <link rel="manifest" href="manifest.json">
 <meta name="mobile-web-app-capable" content="yes">
@@ -338,6 +338,8 @@ async function resolveStop(key, force) {
 
 // ===== Способ 1 (основной): табло отправлений + следующие остановки каждого рейса =====
 // Один запрос. Рейс берём, только если он после нашей остановки доезжает до остановки назначения.
+const boardSeen = {};   // все отправления с остановки по Transitous (для сверки с NRW)
+const shortTrack = s => String(s || "").replace(/\s*\(.*$/, "").trim();
 async function boardTrips(fromId, fromKey, toKey, time) {
   const params = new URLSearchParams({
     stopId: fromId, time, n: "80", window: String(WINDOW_MIN * 60), mode: "BUS", fetchStops: "true",
@@ -347,10 +349,12 @@ async function boardTrips(fromId, fromKey, toKey, time) {
   if (list.length && !list.some(x => Array.isArray(x.nextStops))) {
     throw Object.assign(new Error("сервер не вернул следующие остановки"), { noStops: true });
   }
-  const out = [];
+  const out = [], seen = [];
   for (const x of list) {
     const p = x.place || {};
     if (!STOPS[fromKey].match.test(p.name || "")) continue;     // только наша остановка
+    seen.push({ line: x.routeShortName || "", sched: new Date(p.scheduledDeparture || p.departure).getTime(),
+                track: shortTrack(p.track || p.scheduledTrack) });
     if (x.pickupDropoffType === "NOT_ALLOWED") continue;          // посадки нет
     const di = (x.nextStops || []).findIndex(n => STOPS[toKey].match.test(n.name || ""));
     const d = di >= 0 ? x.nextStops[di] : null;
@@ -367,6 +371,7 @@ async function boardTrips(fromId, fromKey, toKey, time) {
       via: di,                                                    // сколько остановок по пути
     });
   }
+  boardSeen[fromKey] = seen;
   return finalize(out);
 }
 
@@ -436,24 +441,27 @@ function efaDeps(stopKey) {
     setTimeout(() => { if (efaCalls[id]) { delete efaCalls[id]; res(null); } }, 15000);
   });
 }
-const shortTrack = s => String(s || "").replace(/\s*\(.*$/, "").trim();
 const normDest = s => String(s || "").toLowerCase().replace(/aachen/g, "").replace(/[^a-zа-яäöüß0-9]+/g, "");
 const patKey = (line, track, dest) => line + "|" + shortTrack(track) + "|" + normDest(dest);
 async function augmentNrw(a, b, trips) {
   const deps = await efaDeps(a);
   if (!Array.isArray(deps) || !deps.length) return trips;
-  const pk = "pat:" + a + ">" + b;
+  const seen = boardSeen[a];
+  if (!seen) return trips;                       // запасной способ — без сверки не добавляем
+  const pk = "pat2:" + a + ">" + b;
   let pats = {};
   try { pats = JSON.parse(localStorage.getItem(pk) || "{}") || {}; } catch {}
   const now = Date.now();
   const unmatched = [];
   for (const e of deps) {
     const plan = new Date(e.plan).getTime();
-    const t = trips.find(t => t.line === e.line && Math.abs(new Date(t.depSched).getTime() - plan) <= 60_000);
+    const tr = shortTrack(e.platform);
+    const same = (line, sched, track) => line === e.line && Math.abs(sched - plan) <= 60_000 && track === tr;
+    const t = trips.find(t => same(t.line, new Date(t.depSched).getTime(), shortTrack(t.track)));
     if (t) {
       const ride = Math.round((new Date(t.arr) - new Date(t.dep)) / 60000);
       if (ride > 0) pats[patKey(e.line, e.platform, e.dest)] = { ride, via: t.via, t: now };
-    } else unmatched.push(e);
+    } else if (!seen.some(s => same(s.line, s.sched, s.track))) unmatched.push(e);   // рейс, о котором Transitous знает, но он не доезжает, не добавляем
   }
   for (const k of Object.keys(pats)) if (now - pats[k].t > 60 * 86_400_000) delete pats[k];   // забываем через 60 дней
   try { localStorage.setItem(pk, JSON.stringify(pats)); } catch {}
@@ -775,7 +783,7 @@ async function doLoad(k) {
         trips = await planTrips(a, b, time);         // запасной способ
       }
     }
-    if (NRW) { try { trips = await augmentNrw(a, b, trips); } catch (e) { console.warn("NRW:", e); } }
+    if (NRW) { try { localStorage.removeItem("pat:" + k); } catch {} try { trips = await augmentNrw(a, b, trips); } catch (e) { console.warn("NRW:", e); } }
     state[k] = { trips, at: Date.now() };
     store.set("cache3:" + k, state[k]);
     lastError = null; setBanner("");

@@ -60,5 +60,6 @@ echo "--- notif-scheduled"; cat shots/notif-scheduled.txt
 if grep -q "FATAL EXCEPTION" shots/logcat-full.txt && grep -A3 "FATAL EXCEPTION" shots/logcat-full.txt | grep -q "$PKG"; then
   echo "::error::Приложение упало"; exit 1
 fi
+if grep -E "NRW \+.*Uniklinik.*\((schanz>bushof|schanz>kaiserplatz)\)" shots/log.txt; then echo "::error::Добавлен рейс в обратную сторону"; exit 1; fi
 [ "$FIRED" = "1" ] || { echo "::error::Напоминание «Пора выходить» не пришло"; exit 1; }
 echo "OK"
