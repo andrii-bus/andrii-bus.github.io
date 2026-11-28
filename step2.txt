@@ -1,0 +1,17 @@
+11-28 15:19:58.901 W/ActivityTaskManager(  522): callingPackage for (uid=2000, pid=3005) has no WPC
+11-28 15:19:58.909 I/ActivityTaskManager(  522): START u0 {flg=0x10000000 cmp=io.github.andriibus.labus/.MainActivity} with LAUNCH_SINGLE_TASK from uid 2000 (BAL_ALLOW_PERMISSION) result code=0
+11-28 15:20:02.408 I/ActivityTaskManager(  522): Displayed io.github.andriibus.labus/.MainActivity for user 0: +3s468ms
+11-28 15:20:02.907 D/SystemServerTimingAsync(  522): ssm.onUnlockedUser-0_com.android.server.wm.ActivityTaskManagerService$Lifecycle
+11-28 15:20:02.913 V/SystemServerTimingAsync(  522): ssm.onUnlockedUser-0_com.android.server.wm.ActivityTaskManagerService$Lifecycle took to complete: 6ms
+11-28 15:20:08.064 D/SystemServerTimingAsync(  522): ssm.onCompletedEventUser-0_{|Unlocked|}_com.android.server.wm.ActivityTaskManagerService$Lifecycle
+11-28 15:20:08.064 V/SystemServerTimingAsync(  522): ssm.onCompletedEventUser-0_{|Unlocked|}_com.android.server.wm.ActivityTaskManagerService$Lifecycle took to complete: 0ms
+11-28 15:20:23.690 E/AppOps  (  522): 	at com.android.server.wm.ActivityTaskManagerService.hasSystemAlertWindowPermission(ActivityTaskManagerService.java:1076)
+11-28 15:20:23.690 E/AppOps  (  522): 	at com.android.server.wm.ActivityTaskManagerService$LocalService.hasSystemAlertWindowPermission(ActivityTaskManagerService.java:7006)
+11-28 15:20:26.976 I/ActivityTaskManager(  522): Activity reported stop, but no longer stopping: ActivityRecord{5841b4c u0 com.google.android.apps.nexuslauncher/.NexusLauncherActivity t7} STOPPED
+11-28 15:20:32.906 W/ActivityTaskManager(  522): Force removing ActivityRecord{2b1b0db u0 io.github.andriibus.labus/.MainActivity t8 f}}: app died, no saved state
+11-28 15:20:33.212 W/ActivityTaskManager(  522): callingPackage for (uid=2000, pid=5297) has no WPC
+11-28 15:20:33.305 I/ActivityTaskManager(  522): Add Task{ded3778 #8 type=standard A=10192:io.github.andriibus.labus} to hidden list because adding Task{4118e98 #9 type=standard A=10192:io.github.andriibus.labus}
+11-28 15:20:33.307 I/ActivityTaskManager(  522): START u0 {flg=0x10000000 cmp=io.github.andriibus.labus/.MainActivity (has extras)} with LAUNCH_SINGLE_TASK from uid 2000 (BAL_ALLOW_PERMISSION) result code=0
+11-28 15:20:33.750 W/ActivityTaskManager(  522): Activity top resumed state loss timeout for ActivityRecord{5841b4c u0 com.google.android.apps.nexuslauncher/.NexusLauncherActivity t7}
+11-28 15:20:33.806 W/ActivityTaskManager(  522): Activity pause timeout for ActivityRecord{5841b4c u0 com.google.android.apps.nexuslauncher/.NexusLauncherActivity t7}
+11-28 15:20:35.010 I/ActivityTaskManager(  522): Displayed io.github.andriibus.labus/.MainActivity for user 0: +1s789ms

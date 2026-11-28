@@ -1,0 +1,7 @@
+11-28 15:21:10.892 I/LABus   ( 5954): NRW +4 H.14 → Uniklinik (bushof>schanz)
+11-28 15:21:10.892 I/LABus   ( 5954): NRW +4 H.14 → Uniklinik (bushof>schanz)
+11-28 15:21:10.892 I/LABus   ( 5954): NRW добавила рейсов: 2 (bushof>schanz)
+11-28 15:21:38.108 I/LABus   ( 6091): NRW +13B H.5 → Hauptbahnhof - Schanz - Ponttor (kaiserplatz>schanz)
+11-28 15:21:38.109 I/LABus   ( 6091): NRW добавила рейсов: 1 (kaiserplatz>schanz)
+11-28 15:22:02.386 I/LABus   ( 6218): напоминание 4|2026-11-28T15:27:00Z: слежение с 2026-11-28T15:22:03.885Z
+11-28 15:22:07.397 I/LABus   ( 6218): слежение rem schanz>bushof 4|2026-11-28T15:27:00Z
