@@ -38,10 +38,12 @@ public final class Api {
 
     static final class Stop {
         final String key, name, query;
-        final Pattern match;
-        Stop(String key, String name, String query, String re) {
+        final Pattern match, pick;
+        Stop(String key, String name, String query, String re) { this(key, name, query, re, re); }
+        Stop(String key, String name, String query, String re, String pickRe) {
             this.key = key; this.name = name; this.query = query;
             this.match = Pattern.compile(re, Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CASE);
+            this.pick = Pattern.compile(pickRe, Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CASE);
         }
         boolean is(String s) { return s != null && match.matcher(s).find(); }
     }
@@ -50,7 +52,7 @@ public final class Api {
     /** Все отправления с остановки по последнему ответу Transitous: {линия, план (мс), стоянка}. */
     static final Map<String, List<String[]>> BOARD_SEEN = new java.util.concurrent.ConcurrentHashMap<>();
     static {
-        STOPS.put("schanz", new Stop("schanz", "Schanz", "Schanz (Jakobstraße) Aachen", "schanz.*jakob"));
+        STOPS.put("schanz", new Stop("schanz", "Schanz", "Schanz (Jakobstraße) Aachen", "schanz.*(jakob|boxgraben)", "schanz.*jakob"));
         STOPS.put("bushof", new Stop("bushof", "Bushof", "Bushof Aachen", "bushof"));
         STOPS.put("kaiserplatz", new Stop("kaiserplatz", "Kaiserplatz", "Kaiserplatz Aachen", "kaiserplatz"));
     }
@@ -208,7 +210,7 @@ public final class Api {
         JSONObject hit = null, firstDe = null;
         for (int i = 0; i < arr.length(); i++) {
             JSONObject m = arr.optJSONObject(i);
-            if (m == null || !s.is(m.optString("name"))) continue;
+            if (m == null || !s.pick.matcher(m.optString("name")).find()) continue;
             boolean inAachen = false;
             JSONArray areas = m.optJSONArray("areas");
             if (areas != null) for (int j = 0; j < areas.length(); j++) {

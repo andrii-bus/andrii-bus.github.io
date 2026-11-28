@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#0e0e10">
-<meta name="app-version" content="bus-v36">
+<meta name="app-version" content="bus-v37">
 <title>LA Bus</title>
 <link rel="manifest" href="manifest.json">
 <meta name="mobile-web-app-capable" content="yes">
@@ -249,7 +249,7 @@
 // match — имя остановки обязано подходить под это правило
 // (так "Schanz (Jakobstraße)" не перепутается с "Schanz (Vaalser Straße)").
 const STOPS = {
-  schanz:      { name: "Schanz",      full: "Schanz (Jakobstraße)", query: "Schanz (Jakobstraße) Aachen", match: /schanz.*jakob/i },
+  schanz:      { name: "Schanz",      full: "Schanz (Jakobstraße)", query: "Schanz (Jakobstraße) Aachen", match: /schanz.*(jakob|boxgraben)/i, pick: /schanz.*jakob/i },   // H.2/H.3 на Boxgraben — та же остановка Schanz
   bushof:      { name: "Bushof",      full: "Bushof",               query: "Bushof Aachen",               match: /bushof/i },
   kaiserplatz: { name: "Kaiserplatz", full: "Kaiserplatz",          query: "Kaiserplatz Aachen",          match: /kaiserplatz/i },
 };
@@ -329,7 +329,7 @@ async function resolveStop(key, force) {
   const res = await getJSON(url);
   // город именно Аахен (не Eschweiler, не Düren), немецкие данные (de-…) раньше бельгийских/нидерландских
   const inAachen = m => (m.areas || []).some(a => /^aachen$/i.test(a.name));
-  const cands = (res || []).filter(m => s.match.test(m.name) && inAachen(m));
+  const cands = (res || []).filter(m => (s.pick || s.match).test(m.name) && inAachen(m));
   const hit = cands.find(m => /^de-/.test(m.id)) || cands[0];
   if (!hit) throw new Error(`Остановка «${s.name}» не найдена`);
   store.set(ck, { id: hit.id, name: hit.name, t: Date.now() });
